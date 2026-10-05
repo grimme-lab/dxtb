@@ -91,7 +91,7 @@ def solve(
     Tensor
         Orbital-resolved partial charges vector.
     """
-    n0, occupation = get_refocc(refocc, chrg, spin, ihelp)
+    n0, occupation, nab = get_refocc(refocc, chrg, spin, ihelp)
 
     if config.requires_iterations is False:
         # pylint: disable=import-outside-toplevel
@@ -131,6 +131,7 @@ def solve(
             cache=cache,
             integrals=integrals,
             config=config,
+            nel=nab,
             *args,
             **kwargs,
         )
@@ -157,13 +158,14 @@ def solve(
         cache=cache,
         integrals=integrals,
         config=config,
+        nel=nab,
         **kwargs,
     )(charges)
 
 
 def get_refocc(
     refs: Tensor, chrg: Tensor, spin: Tensor | None, ihelp: IndexHelper
-) -> tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor, Tensor]:
     """
     Obtain reference occupation and total number of electrons.
 
@@ -180,8 +182,9 @@ def get_refocc(
 
     Returns
     -------
-    tuple[Tensor, Tensor]
-        Reference occupation and occupation.
+    tuple[Tensor, Tensor, Tensor]
+        Reference occupation, occupation, and number of alpha and beta
+        electrons (shape: [..., 2]).
     """
 
     refocc = ihelp.spread_ushell_to_orbital(refs)
@@ -194,7 +197,12 @@ def get_refocc(
     )
 
     # Obtain the reference occupation and total number of electrons
-    nel = torch.sum(n0, -1, keepdim=True) - chrg
+    # sum per shell (exact, as in tblite); padding shells have no orbitals
+    shell_occ = ihelp.spread_ushell_to_shell(refs)
+    shell_occ = torch.where(
+        ihelp.orbitals_per_shell != 0, shell_occ, torch.zeros_like(shell_occ)
+    )
+    nel = torch.sum(shell_occ, -1, keepdim=True) - chrg
 
     # get alpha and beta electrons and occupation
     nab = filling.get_alpha_beta_occupation(nel, spin)
@@ -203,4 +211,4 @@ def get_refocc(
         nab,
     )
 
-    return n0, occupation
+    return n0, occupation, nab

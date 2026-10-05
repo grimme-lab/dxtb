@@ -108,9 +108,18 @@ def scf_wrapper(
     cache: InteractionListCache,
     integrals: IntegralMatrices,
     config: ConfigSCF,
+    nel: Tensor | None = None,
     **kwargs: Any,
 ) -> SCFResult:
-    # calculate SCF equilibrium using semi-pure functions
+    """
+    Calculate the SCF equilibrium using semi-pure functions.
+
+    Parameters
+    ----------
+    nel : Tensor | None, optional
+        Number of alpha and beta electrons (shape: [..., 2]). Defaults to
+        `occupation.sum(-1)`.
+    """
 
     # distinct objects containing data and configuration
     # forbidden = ["bck_options", "fwd_options", "scf_options"]
@@ -122,6 +131,7 @@ def scf_wrapper(
         ihelp=ihelp,
         cache=cache,
         integrals=integrals,
+        nel=nel,
         # **data_kwargs,
     )
 

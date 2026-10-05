@@ -152,6 +152,7 @@ class SelfConsistentFieldFull(BaseTSCF):
         co = torch.zeros_like(self._data.occupation)
         cd = torch.zeros_like(self._data.density)
         n0 = self._data.n0
+        nel = self._data.nel
         numbers = self._data.numbers
         charges_data = self._data.charges.copy()
         potential_data = self._data.potential.copy()
@@ -381,6 +382,7 @@ class SelfConsistentFieldFull(BaseTSCF):
             # write culled variables (that did not change throughout the
             # SCF) back to `self._data` for the final energy evaluation
             self._data.n0 = n0
+            self._data.nel = nel
             self._data.numbers = numbers
 
             self._data.ints.run_checks = False

@@ -82,6 +82,12 @@ class BaseSCF:
         occupation: Tensor
         """Occupation numbers (shape: [..., 2, orbs])"""
 
+        nel: Tensor
+        """
+        Number of alpha and beta electrons (shape: [..., 2]). Fixed during the
+        SCF.
+        """
+
         n0: Tensor
         """Reference occupation for each orbital (shape: [..., orbs])"""
 
@@ -123,6 +129,7 @@ class BaseSCF:
             ihelp: IndexHelper,
             cache: InteractionListCache,
             integrals: IntegralMatrices,
+            nel: Tensor | None = None,
         ) -> None:
             if integrals.hcore is None:
                 raise ValueError("No core Hamiltonian provided.")
@@ -131,6 +138,7 @@ class BaseSCF:
 
             self.ints = integrals
             self.occupation = occupation
+            self.nel = occupation.sum(-1) if nel is None else nel
             self.n0 = n0
             self.numbers = numbers
             self.ihelp = ihelp
@@ -202,6 +210,7 @@ class BaseSCF:
             self.hamiltonian = self.hamiltonian[twodim]
             self.density = self.density[twodim]
             self.occupation = self.occupation[twodim]
+            self.nel = self.nel[~conv]
             self.evecs = self.evecs[twodim]
             self.evals = self.evals[onedim]
             self.energy = self.energy[onedim]
@@ -875,9 +884,10 @@ class BaseSCF:
 
         self._data.evals, self._data.evecs = self.diagonalize(hamiltonian)
 
-        # round to integers to avoid numerical errors; the occupation of the
-        # previous step is not part of the graph of the new one
-        nel = self._data.occupation.sum(-1).round().detach()
+        # fixed number of alpha and beta electrons from the setup (as in
+        # tblite); it is never re-derived from the previous occupation and
+        # keeps the graph of the total charge
+        nel = self._data.nel
 
         # expand emo/mask to second dim (for alpha/beta electrons)
         emo = self._data.evals.unsqueeze(-2).expand([*nel.shape, -1])
@@ -900,7 +910,7 @@ class BaseSCF:
 
             # check if number of electrons is still correct
             _nel = self._data.occupation.sum(-1)
-            if torch.any(torch.abs(nel - _nel.round(decimals=3)) > 1e-4):
+            if torch.any(torch.abs(nel - _nel) > 1e-4):
                 raise RuntimeError(
                     f"Number of electrons changed during Fermi smearing "
                     f"({nel} -> {_nel})."

@@ -148,7 +148,7 @@ class BaseXSCF(BaseSCF, xt.EditableModule):
             ]
 
         if methodname == "hamiltonian_to_density":
-            a = [prefix + "_data.occupation"]
+            a = [prefix + "_data.occupation", prefix + "_data.nel"]
             b = self.getparamnames("diagonalize", prefix=prefix)
             c = self.getparamnames("get_overlap", prefix=prefix)
             return a + b + c
