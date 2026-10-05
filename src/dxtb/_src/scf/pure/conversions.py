@@ -343,7 +343,11 @@ def hamiltonian_to_density(
     mask = mask.unsqueeze(-2).expand([*nel.shape, -1])
 
     # Fermi smearing only for non-zero electronic temperature
-    kt = data.ints.hcore.new_tensor(cfg.fermi.etemp * KELVIN2AU)
+    # `new_tensor` fails on functorch-wrapped tensors (torch 2.4)
+    hcore = data.ints.hcore
+    kt = torch.tensor(
+        cfg.fermi.etemp * KELVIN2AU, device=hcore.device, dtype=hcore.dtype
+    )
     if not torch.all(kt < 3e-7):  # 0.1 Kelvin * K2AU
         data.occupation = filling.get_fermi_occupation(
             nel,
