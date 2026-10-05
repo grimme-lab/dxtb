@@ -455,6 +455,10 @@ KNOWN_FAILURES: dict[tuple[str, str, str, str], tuple[str, bool]] = {
         "FD-reference-noise limited, slow-converging system (err 2.13e-06, tol 1e-06)",
         False,
     ),
+    ("full", "slow_gap", "hvp_pos", "E"): (
+        "FD-reference-noise limited, slow-converging system (err 1.74e-06 on CI, 1e-07 locally, tol 1e-06)",
+        False,
+    ),
     ("full", "slow_gap", "pos", "q2"): (
         "unrolled derivative of a non-variational quantity is inexact (err 4.22e-03)",
         False,
