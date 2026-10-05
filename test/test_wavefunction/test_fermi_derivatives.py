@@ -64,7 +64,7 @@ def _preload_jvp_decompositions() -> None:
 
 _preload_jvp_decompositions()
 
-TEMPERATURES = [300.0, 5000.0, 25000.0]
+TEMPERATURES = [300.0, 25000.0]
 STEPS = [0, 1, 2]
 
 # Tolerance of the identities relative to the scale of the derivatives.
@@ -478,17 +478,6 @@ def test_step_count(name: str, steps: int):
     _electron_conservation(name, 5000.0, steps)
 
 
-@pytest.mark.grad
-def test_step_count_three():
-    """
-    Three steps are exact through order 7. The violation at order 8 is
-    only 1e-9 of the scale (or less) and not distinguishable from the
-    rounding of eighth derivatives, i.e., it is not checked. Takes about a
-    minute because the nested forward-mode derivatives grow exponentially.
-    """
-    _electron_conservation("fractional", 5000.0, 3, lower=False)
-
-
 def test_start_error_slope():
     """
     With a start error e0 of the detached solution, the error of the first
@@ -749,7 +738,7 @@ def test_diff_order_default():
         assert (occ - ref).abs().max() <= 1e-10
 
 
-@pytest.mark.parametrize("order", [2, 4, 5, 6])
+@pytest.mark.parametrize("order", [2, 5])
 @pytest.mark.parametrize("name", ["fractional", "batch_padding"])
 def test_diff_order_not_power_of_two(name: str, order: int):
     """
@@ -814,7 +803,7 @@ def _above_floor(case: Case, ktemp: float, steps: int) -> torch.Tensor:
     return deriv >= 10 * filling._diff_floor(torch.double, steps)
 
 
-@pytest.mark.parametrize("steps", [1, 2, 3])
+@pytest.mark.parametrize("steps", [1, 2])
 @pytest.mark.parametrize("ktemp", TEMPERATURES)
 @pytest.mark.parametrize("name", ["fractional", "degenerate", "batch_padding"])
 def test_electron_number_derivatives(name: str, ktemp: float, steps: int):

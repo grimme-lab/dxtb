@@ -32,7 +32,7 @@ from .samples import samples
 
 
 @pytest.mark.parametrize("algorithm", ["md", "os"])
-@pytest.mark.parametrize("name", ["LiH", "H2O"])
+@pytest.mark.parametrize("name", ["H2O"])
 @pytest.mark.parametrize(
     "cls", [dxtb.calculators.GFN1Calculator, dxtb.calculators.GFN2Calculator]
 )

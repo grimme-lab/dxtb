@@ -43,8 +43,8 @@
   <a href="https://img.shields.io/badge/Python-3.8%20|%203.9%20|%203.10%20|%203.11%20|%203.12|%203.13|%203.14-blue.svg">
     <img src="https://img.shields.io/badge/Python-3.8%20|%203.9%20|%203.10%20|%203.11%20|%203.12|%203.13|%203.14-blue.svg" alt="Python Versions"/>
   </a>
-  <a href="https://img.shields.io/badge/PyTorch-%3E=2.4.0-blue.svg">
-    <img src="https://img.shields.io/badge/PyTorch-%3E=2.4.0-blue.svg" alt="PyTorch Versions"/>
+  <a href="https://img.shields.io/badge/PyTorch-%3E=2.5.0-blue.svg">
+    <img src="https://img.shields.io/badge/PyTorch-%3E=2.5.0-blue.svg" alt="PyTorch Versions"/>
   </a>
 </p>
 
@@ -128,24 +128,23 @@ For more examples and details, check out [the documentation](https://dxtb.readth
 
 ## Compatibility
 
-| PyTorch \ Python | 3.8                | 3.9                | 3.10               | 3.11               | 3.12               | 3.13               | 3.14               |
-| ---------------- | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ |
-| 2.4.1            | :white_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: | :x:                | :x:                |
-| 2.5.1            | :x:                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: | :x:                | :x:                |
-| 2.6.0            | :x:                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: | :x:                |
-| 2.7.1            | :x:                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: | :x:                |
-| 2.8.0            | :x:                | :white_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: | :x:                |
-| 2.9.1            | :x:                | :x:                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: |
-| 2.10.0           | :x:                | :x:                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: |
-| 2.11.0           | :x:                | :x:                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: |
-| 2.12.1           | :x:                | :x:                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: |
-| 2.13.0           | :x:                | :x:                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: |
-| 2.14.0           | :x:                | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| PyTorch \ Python | 3.10               | 3.11               | 3.12               | 3.13               | 3.14               |
+| ---------------- | ------------------ | ------------------ | ------------------ | ------------------ | ------------------ |
+| 2.5.1            | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: | :x:                | :x:                |
+| 2.6.0            | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: | :x:                |
+| 2.7.1            | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: | :x:                |
+| 2.8.0            | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: | :x:                |
+| 2.9.1            | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: |
+| 2.10.0           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: |
+| 2.11.0           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: |
+| 2.12.1           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: |
+| 2.13.0           | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: |
+| 2.14.1           | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 
 :white_check_mark: tested in CI &nbsp;&nbsp; :heavy_check_mark: supported, but not tested in CI (should still work) &nbsp;&nbsp; :x: not supported
 
 Note that only the latest bug fix version is listed, but all preceding bug fix minor versions are supported.
-For example, although only version 2.4.1 is listed, version 2.4.0 is also supported.
+For example, although only version 2.5.1 is listed, version 2.5.0 is also supported.
 
 The libcint interface is **not** available for macOS and Windows.
 Correspondingly, the pure PyTorch integral driver is used there, which is slower than libcint on the CPU for large systems (see the documentation for the available integral algorithms).

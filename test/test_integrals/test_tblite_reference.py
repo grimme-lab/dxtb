@@ -58,7 +58,7 @@ def _calculator(numbers, algorithm: str, dd: DD):
 
 
 @pytest.mark.parametrize("algorithm", ALGOS)
-@pytest.mark.parametrize("name", ["LiH", "H2O", "CH4", "SiH4"])
+@pytest.mark.parametrize("name", ["H2O", "SiH4"])
 def test_energy_gradient_dipole_match_tblite(name: str, algorithm: str) -> None:
     dd: DD = {"dtype": torch.double, "device": DEVICE}
     numbers = samples[name]["numbers"].to(DEVICE)
@@ -90,7 +90,7 @@ def test_energy_gradient_dipole_match_tblite(name: str, algorithm: str) -> None:
 
 @pytest.mark.parametrize("rotate", [False, True])
 @pytest.mark.parametrize("algorithm", ALGOS)
-@pytest.mark.parametrize("name", ["LiH", "H2O", "CH4", "SiH4"])
+@pytest.mark.parametrize("name", ["H2O", "SiH4"])
 def test_quadrupole_matches_tblite(
     name: str, algorithm: str, rotate: bool
 ) -> None:

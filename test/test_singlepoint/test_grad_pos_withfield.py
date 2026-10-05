@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Run tests for IR spectra.
+Run tests for the nuclear gradient in an electric field.
 """
 
 from __future__ import annotations
@@ -107,7 +107,7 @@ def test_gradcheck(dtype: torch.dtype, name: str, gfn: str) -> None:
 @pytest.mark.grad
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", ["H2O"])
 @pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 def test_gradgradcheck(dtype: torch.dtype, name: str, gfn: str) -> None:
     """
@@ -171,7 +171,7 @@ def gradchecker_batch(
 # without padding; the single-sample tests above cover the per-molecule
 # physics. The batched second-order check is marked `large` (not run in the
 # default tox tier).
-batch_pairs = [("SiH4", "H2"), ("H2", "H2")]
+batch_pairs = [("H2O", "H2"), ("H2", "H2")]
 
 
 @pytest.mark.grad

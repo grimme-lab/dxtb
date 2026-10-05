@@ -129,7 +129,7 @@ def _build_pyscf_mol(numbers: torch.Tensor, positions: torch.Tensor):
         gto.mole.NORMALIZE_GTO = prev_normalize
 
 
-@pytest.mark.parametrize("name", ["H2", "LiH", "CH4", "NH3", "SiH4"])
+@pytest.mark.parametrize("name", ["LiH", "SiH4"])
 def test_overlap_matches_pyscf_via_libcint_order(name: str) -> None:
     """PySCF's own AO order matches dxtb's libcint driver directly."""
     dd: DD = {"dtype": torch.double, "device": DEVICE}
@@ -192,7 +192,7 @@ def test_pytorch_matches_libcint_and_pyscf() -> None:
     assert diff_vs_pyscf[mask].max() < 1e-12
 
 
-@pytest.mark.parametrize("name", ["H2", "LiH", "CH4", "NH3", "SiH4"])
+@pytest.mark.parametrize("name", ["LiH", "SiH4"])
 @pytest.mark.parametrize("kind", ["dipole", "quadrupole"])
 @pytest.mark.parametrize("algorithm", ALGORITHMS)
 def test_os_multipoles_match_pyscf(

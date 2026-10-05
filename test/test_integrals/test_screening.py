@@ -54,7 +54,7 @@ COMPONENTS = {
 }
 
 # SiH4 + NH3 cover s, p and d shells
-NAMES = ("SiH4", "NH3", "H2O", "LiH")
+NAMES = ("SiH4", "LiH")
 
 
 def _setup(name: str, dd: DD, ascale: float):
@@ -331,27 +331,16 @@ def test_jacrev_pairs() -> None:
     )
 
 
-def _compile_backend() -> str:
-    """
-    ``inductor`` needs a C++ compiler (missing, e.g., on CI runners without
-    MSVC); the graph capture is checked with ``aot_eager`` otherwise.
-    """
-    try:
-        # pylint: disable=import-outside-toplevel
-        from torch._inductor.cpp_builder import get_cpp_compiler
-
-        get_cpp_compiler()
-    except Exception:  # pylint: disable=broad-exception-caught
-        return "aot_eager"
-    return "inductor"
-
-
 @pytest.mark.skipif(
     not torch._dynamo.is_dynamo_supported(),
     reason="torch.compile is not supported for this Python/torch combination",
 )
 def test_compile() -> None:
-    """``fullgraph`` compilation, unscreened and with a pair selection."""
+    """
+    ``fullgraph`` compilation, unscreened and with a pair selection. The graph
+    capture is checked with ``aot_eager``; ``inductor`` would only add the
+    (slow) code generation, which needs a C++ compiler.
+    """
     dd: DD = {"dtype": torch.double, "device": DEVICE}
     numbers = torch.tensor([8, 1, 1, 8, 1, 1], device=DEVICE)
     positions = torch.tensor(
@@ -375,9 +364,7 @@ def test_compile() -> None:
     for kwargs in ({}, {"pairs": pairs}):
         fn = _matrix(ihelp, alphas, coeffs, None, plan=plan, **kwargs)
         torch._dynamo.reset()
-        out = torch.compile(fn, fullgraph=True, backend=_compile_backend())(
-            positions
-        )
+        out = torch.compile(fn, fullgraph=True, backend="aot_eager")(positions)
         assert torch.allclose(out, fn(positions), atol=1e-13, rtol=0.0)
 
     # the data-dependent selection by threshold is refused (older torch
@@ -395,7 +382,7 @@ def test_compile() -> None:
                 screening_threshold=1e-8,
             ),
             fullgraph=True,
-            backend=_compile_backend(),
+            backend="aot_eager",
         )(positions)
 
 

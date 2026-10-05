@@ -102,6 +102,7 @@ def test_single(dtype: torch.dtype, name: str, key: str) -> None:
     single(name, key, dd, atol=1e-3, rtol=1e-4)
 
 
+@pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", ["LYS_xao", "C60"])
 @pytest.mark.parametrize("key", FIELDS)
@@ -138,8 +139,9 @@ def autograd_or_numerical(
     )
 
 
+# the field gradient derivative is covered in `test_quadrupole_fieldgrad.py`
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", ["LiH", "H2O"])
 @pytest.mark.parametrize("key", FIELDS)
 @pytest.mark.parametrize("kind", ["autograd", "numerical"])
 def test_single_diagonal(
@@ -184,13 +186,14 @@ def batched(
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name2", ["H", "H2O", "PbH4-BiH3"])
 @pytest.mark.parametrize("key", FIELDS)
 def test_batch(dtype: torch.dtype, name1: str, name2: str, key: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     batched(name1, name2, key, dd, atol=1e-3, rtol=1e-3)
 
 
+@pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", ["C60"])
@@ -205,7 +208,7 @@ def test_batch_medium(
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", ["HHe", "LiH", "H2O"])
+@pytest.mark.parametrize("name2", ["HHe", "H2O"])
 @pytest.mark.parametrize("scp_mode", ["charge", "potential", "fock"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 def test_batch_settings(

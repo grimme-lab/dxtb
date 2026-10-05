@@ -39,7 +39,6 @@ from dxtb._src.typing import DD, Tensor
 from ..conftest import DEVICE
 
 MODES = ["full", "implicit", "experimental"]
-GUESSES = ["eeq", "sad"]
 
 C2 = ([6, 6], [[0.0, 0.0, 0.0], [0.0, 0.0, 2.9]])
 
@@ -110,17 +109,20 @@ def test_no_plateau() -> None:
     assert all(b > a for a, b in zip(e[:-1], e[1:])), e
 
 
-@pytest.mark.parametrize("guess", GUESSES)
 @pytest.mark.parametrize("mode", MODES)
 @pytest.mark.parametrize(
     "name,etemp,q0",
     [("H2O", 300.0, 0.3), ("C2", 5000.0, 0.0), ("C2", 5000.0, 0.2)],
 )
-def test_gradient_fd(
-    name: str, etemp: float, q0: float, mode: str, guess: str
-) -> None:
+def test_gradient_fd(name: str, etemp: float, q0: float, mode: str) -> None:
     """dE/dQ at finite temperature matches central differences."""
-    grad, fd = _grad_and_fd(name, etemp, mode, guess, q0)
+    grad, fd = _grad_and_fd(name, etemp, mode, "eeq", q0)
+    assert pytest.approx(fd.cpu(), abs=FD_ATOL) == grad.cpu()
+
+
+def test_gradient_fd_sad() -> None:
+    """dE/dQ with the SAD guess (EEQ in all other tests)."""
+    grad, fd = _grad_and_fd("C2", 5000.0, "implicit", "sad", 0.2)
     assert pytest.approx(fd.cpu(), abs=FD_ATOL) == grad.cpu()
 
 

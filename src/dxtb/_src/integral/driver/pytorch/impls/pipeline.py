@@ -189,11 +189,7 @@ def assemble_multipole_1d(
         Integrals of shape ``(nvec, ncomp, nsph_a, nsph_b)``.
     """
     li, lj = angular
-    # plain loops: dynamo (torch 2.4) cannot trace a nested generator here
-    emax = 0
-    for comp in components:
-        for order in comp:
-            emax = max(emax, order)
+    emax = max((order for comp in components for order in comp), default=0)
 
     itrafo, jtrafo = _transforms(angular, vec)
     _, xij, rpi, rpj, sij = _primitive_pairs(alpha, coeff, vec)

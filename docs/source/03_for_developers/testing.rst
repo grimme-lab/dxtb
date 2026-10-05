@@ -32,4 +32,4 @@ To test specific environments, use the `-e` flag.
 
 .. code-block:: shell
 
-     tox -e py39-torch1110
+     tox -e py310-torch2141
