@@ -34,7 +34,7 @@ from .uhf_table import uhf_anion, uhf_cation
 opts = {
     "fermi_etemp": 300,
     "fermi_maxiter": 500,
-    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
     "scp_mode": "potential",  # important for atoms (better convergence)
     "verbosity": 0,
 }
@@ -42,12 +42,37 @@ opts = {
 
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype, number", reps_both_dtypes())
+@pytest.mark.parametrize(
+    "dtype, number",
+    [
+        (
+            pytest.param(
+                dtype,
+                n,
+                marks=pytest.mark.xfail(
+                    reason="Mn: the SCF does not converge within maxiter in "
+                    "either mode, so both end in different iterates."
+                ),
+            )
+            if n == 25
+            else (dtype, n)
+        )
+        for dtype, n in reps_both_dtypes()
+    ],
+)
 @pytest.mark.parametrize("partition", ["equal", "atomic"])
 def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
-    """Comparison of object SCF (old) vs. functional SCF."""
+    """
+    Comparison of implicit vs. full (unrolled) SCF.
+
+    Different solvers (Broyden vs. Anderson) stop anywhere within the SCF
+    tolerance, so the modes can only agree to that tolerance. In double
+    precision, both are converged tightly and compared with 1e-8; in single
+    precision the tolerance is ten times the SCF tolerance.
+    """
     dd: DD = {"device": DEVICE, "dtype": dtype}
-    tol = 1e-8
+    scf_tol = 1e-5 if dtype == torch.float32 else 1e-10
+    tol = 10 * scf_tol if dtype == torch.float32 else 1e-8
 
     numbers = torch.tensor([number], device=DEVICE)
     positions = torch.zeros((1, 3), **dd)
@@ -56,8 +81,8 @@ def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
     options = dict(
         opts,
         **{
-            "f_atol": 1e-5 if dtype == torch.float32 else 1e-6,
-            "x_atol": 1e-5 if dtype == torch.float32 else 1e-6,
+            "f_atol": scf_tol,
+            "x_atol": scf_tol,
             "fermi_partition": partition,
             "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
             "maxiter": 100,
@@ -68,13 +93,9 @@ def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
     calc1 = Calculator(numbers, GFN1_XTB, opts=o, **dd)
     result1 = calc1.singlepoint(positions, charges)
 
-    o = dict(options, **{"scf_mode": "implicit_nonpure"})
+    o = dict(options, **{"scf_mode": "full"})
     calc2 = Calculator(numbers, GFN1_XTB, opts=o, **dd)
     result2 = calc2.singlepoint(positions, charges)
-
-    # The xitorch path does not have access to the data object, and hence,
-    # cannot update the iteration count.
-    # assert pytest.approx(result1.iter) == result2.iter
 
     f1 = result1.fenergy.cpu()
     f2 = result2.fenergy.cpu()

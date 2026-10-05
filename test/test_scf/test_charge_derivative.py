@@ -38,7 +38,7 @@ from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
 
-MODES = ["full", "implicit", "implicit_nonpure", "experimental"]
+MODES = ["full", "implicit", "experimental"]
 GUESSES = ["eeq", "sad"]
 
 C2 = ([6, 6], [[0.0, 0.0, 0.0], [0.0, 0.0, 2.9]])

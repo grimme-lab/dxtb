@@ -154,7 +154,7 @@ ref_anion = torch.tensor(
 opts = {
     "fermi_etemp": 300,
     "fermi_maxiter": 500,
-    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
     "scp_mode": labels.SCP_MODE_FOCK,  # better convergence for atoms
     "verbosity": 0,
 }

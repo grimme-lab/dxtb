@@ -24,25 +24,44 @@ theorem in the backward pass.
 
 from __future__ import annotations
 
-import torch
+import copy
 
 from dxtb._src.exlibs import xitorch as xt
-from dxtb._src.timing.decorator import timer_decorator
-from dxtb._src.typing import Tensor
+from dxtb._src.typing import Callable, Tensor
 
 from ..base import BaseSCF
+from ..pure import ovlp_diag
+from ..pure.iterations import iter_options
 
 __all__ = ["BaseXSCF"]
 
 
-class BaseXSCF(BaseSCF, xt.EditableModule):
+class _MapData:
     """
-    Base class for the `xitorch`-based self-consistent field iterator.
+    Inputs of the SCF map taken from the SCF data. Results of the map
+    (density, eigenpairs, ...) are written to a per-call copy, so the map
+    keeps no scratch buffers of the SCF alive.
+    """
+
+    def __init__(self, data: BaseSCF._Data) -> None:
+        self.ints = copy.copy(data.ints)
+        self.n0 = data.n0
+        self.occupation = data.occupation
+        self.nel = data.nel
+        self.ihelp = data.ihelp
+        self.cache = data.cache
+        self.charges = dict(data.charges)
+        self.potential = dict(data.potential)
+
+
+class BaseXSCF(BaseSCF):
+    """
+    Base class for the implicitly differentiated self-consistent field
+    iterator.
 
     This base class implements the `get_overlap` and the `diagonalize` methods
-    that use `LinearOperator`s. Additionally, `getparamnames` is implemented,
-    which is mandatory for all descendents of `xitorch`s base class called
-    `EditableModule`.
+    that use `xitorch`'s `LinearOperator`s and its symmetric eigensolver, and
+    the stateless fixed-point map.
 
     This class only lacks the `scf` method, which implements mixing and
     convergence.
@@ -58,16 +77,8 @@ class BaseXSCF(BaseSCF, xt.EditableModule):
             Overlap matrix.
         """
 
-        smat = self._data.ints.overlap
+        return ovlp_diag.get_overlap(self._data.ints.overlap)
 
-        zeros = torch.eq(smat, 0)
-        mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)
-
-        return xt.LinearOperator.m(
-            smat + torch.diag_embed(smat.new_ones(*smat.shape[:-2], 1) * mask)
-        )
-
-    @timer_decorator("Diagonalize", "SCF")
     def diagonalize(self, hamiltonian: Tensor) -> tuple[Tensor, Tensor]:
         """
         Diagonalize the Hamiltonian.
@@ -87,76 +98,35 @@ class BaseXSCF(BaseSCF, xt.EditableModule):
         evecs : Tensor
             Eigenvectors of the Hamiltonian.
         """
-        h_op = xt.LinearOperator.m(hamiltonian)
-        o_op = self.get_overlap()
+        return ovlp_diag.diagonalize(
+            hamiltonian, self._data.ints.overlap, self.eigen_options
+        )
 
-        return xt.linalg.lsymeig(A=h_op, M=o_op, **self.eigen_options)
+    def stateless_map(self) -> Callable[[Tensor], Tensor]:
+        """
+        Fixed-point map ``x -> g(x)`` that neither reads nor writes ``self``.
 
-    def getparamnames(
-        self, methodname: str, prefix: str = ""
-    ) -> list[str]:  # pragma: no cover
-        if methodname == "scf":
-            a = self.getparamnames("iterate_potential")
-            b = self.getparamnames("charges_to_potential")
-            c = self.getparamnames("potential_to_charges")
-            return a + b + c
+        All tensors that can carry gradients (integrals, interaction caches)
+        are reached through a snapshot of the inputs of the map in the SCF
+        data (:class:`_MapData`), and every call works on its own scratch copy
+        of that snapshot. The returned
+        function therefore holds no reference to this object or to anything
+        that is later attached to the output of the SCF (e.g., ``self._data``
+        after ``scf``), which would form a reference cycle through the autograd
+        graph.
 
-        if methodname == "get_energy":
-            return [prefix + "_data.energy"]
+        Returns
+        -------
+        Callable[[Tensor], Tensor]
+            The map for the current convergence target (SCP mode).
+        """
+        template = _MapData(self._data)
+        cfg = copy.copy(self.config)
+        cfg.eigen_options = self.eigen_options
+        interactions = self.interactions
+        fcn = iter_options[self.config.scp_mode]
 
-        if methodname == "iterate_charges":
-            a = self.getparamnames("charges_to_potential", prefix=prefix)
-            b = self.getparamnames("potential_to_charges", prefix=prefix)
-            return a + b
+        def g(x: Tensor) -> Tensor:
+            return fcn(x, copy.copy(template), cfg, interactions)
 
-        if methodname == "iterate_potential":
-            a = self.getparamnames("potential_to_charges", prefix=prefix)
-            b = self.getparamnames("charges_to_potential", prefix=prefix)
-            return a + b
-
-        if methodname == "iterate_fockian":
-            a = self.getparamnames("hamiltonian_to_density", prefix=prefix)
-            b = self.getparamnames("density_to_charges", prefix=prefix)
-            c = self.getparamnames("charges_to_potential", prefix=prefix)
-            d = self.getparamnames("potential_to_hamiltonian", prefix=prefix)
-            return a + b + c + d
-
-        if methodname == "charges_to_potential":
-            return []
-
-        if methodname == "potential_to_charges":
-            a = self.getparamnames("potential_to_density", prefix=prefix)
-            b = self.getparamnames("density_to_charges", prefix=prefix)
-            return a + b
-
-        if methodname == "potential_to_density":
-            a = self.getparamnames("potential_to_hamiltonian", prefix=prefix)
-            b = self.getparamnames("hamiltonian_to_density", prefix=prefix)
-            return a + b
-
-        if methodname == "density_to_charges":
-            return [
-                prefix + "_data.ints.hcore",
-                prefix + "_data.ints.overlap",
-                prefix + "_data.n0",
-            ]
-
-        if methodname == "potential_to_hamiltonian":
-            return [
-                prefix + "_data.ints.hcore",
-                prefix + "_data.ints.overlap",
-            ]
-
-        if methodname == "hamiltonian_to_density":
-            a = [prefix + "_data.occupation", prefix + "_data.nel"]
-            b = self.getparamnames("diagonalize", prefix=prefix)
-            c = self.getparamnames("get_overlap", prefix=prefix)
-            return a + b + c
-
-        if methodname == "get_overlap":
-            return [prefix + "_data.ints.overlap"]
-
-        if methodname == "diagonalize":
-            return []
-
-        raise KeyError(f"Method '{methodname}' has no paramnames set")
+        return g

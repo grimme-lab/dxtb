@@ -51,7 +51,7 @@ batch_triples = [
 
 opts = {
     "verbosity": 0,
-    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
 }
 
@@ -60,7 +60,7 @@ def single(
     dtype: torch.dtype,
     name: str,
     gfn: str,
-    scf_mode: str = labels.SCF_MODE_IMPLICIT_NON_PURE,
+    scf_mode: str = labels.SCF_MODE_IMPLICIT,
     int_driver: str | None = None,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
@@ -93,7 +93,7 @@ def single(
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 def test_single_gfn1(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     single(dtype, name, "gfn1", scf_mode)
 
@@ -101,7 +101,7 @@ def test_single_gfn1(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 def test_single_gfn2(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     single(dtype, name, "gfn2", scf_mode)
 
@@ -125,7 +125,7 @@ def single_large(
     dtype: torch.dtype,
     name: str,
     gfn: str,
-    scf_mode: str = labels.SCF_MODE_IMPLICIT_NON_PURE,
+    scf_mode: str = labels.SCF_MODE_IMPLICIT,
     int_driver: str | None = None,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
@@ -159,7 +159,7 @@ def single_large(
 @pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist_large)
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 def test_single_large_gfn1(
     dtype: torch.dtype, name: str, scf_mode: str
 ) -> None:
@@ -170,7 +170,7 @@ def test_single_large_gfn1(
 @pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist_large)
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 def test_single_large_gfn2(
     dtype: torch.dtype, name: str, scf_mode: str
 ) -> None:
@@ -193,7 +193,7 @@ def batch(
     name2: str,
     name3: str,
     gfn: str,
-    scf_mode: str = labels.SCF_MODE_IMPLICIT_NON_PURE,
+    scf_mode: str = labels.SCF_MODE_IMPLICIT,
     int_driver: str | None = None,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
@@ -240,7 +240,7 @@ def batch(
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1, name2, name3", batch_triples)
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 def test_batch_gfn1(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
 ) -> None:
@@ -250,7 +250,7 @@ def test_batch_gfn1(
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1, name2, name3", batch_triples)
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 def test_batch_gfn2(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
 ) -> None:
@@ -274,7 +274,7 @@ def batch_large(
     name2: str,
     name3: str,
     gfn: str,
-    scf_mode: str = labels.SCF_MODE_IMPLICIT_NON_PURE,
+    scf_mode: str = labels.SCF_MODE_IMPLICIT,
     int_driver: str | None = None,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
@@ -325,7 +325,7 @@ def batch_large(
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", ["CH4"])
 @pytest.mark.parametrize("name3", ["LYS_xao"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 def test_batch_large(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
 ) -> None:
@@ -338,7 +338,7 @@ def test_batch_large(
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", ["CH4"])
 @pytest.mark.parametrize("name3", ["LYS_xao"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 def test_batch_large_gfn2(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
 ) -> None:

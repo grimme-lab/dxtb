@@ -216,7 +216,7 @@ def analytical_vs_autograd(
 ) -> None:
     field_vector = torch.tensor([-2.0, 1.0, 0.5], **dd) * VAA2AU
 
-    options = dict(opts, **{"scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE})
+    options = dict(opts, **{"scf_mode": labels.SCF_MODE_IMPLICIT})
 
     # separate calculators, so that no cached quantities are shared
     calc = Calculator(

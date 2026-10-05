@@ -50,11 +50,11 @@ SYSTEMS = {
 STEP = 1e-4
 
 # Measured errors of two steps: forces 4e-9 in all modes (dominated by the
-# finite differences). Hessian of C2: 3e-9 (full, non-pure implicit and
-# single-shot mode) and 4e-7 (implicit mode, its second derivative is less
-# accurate). The limits contain a safety factor of 10 and more.
+# finite differences). Hessian of C2: 3e-9 (full, implicit and single-shot
+# mode), of BeH2: 3e-8 (full) and 4e-9 (implicit). The limits contain a safety
+# factor of 10 and more.
 FORCES_ATOL = 5e-8
-HESSIAN_ATOL = {"full": 5e-8, "implicit_nonpure": 5e-8, "implicit": 5e-6}
+HESSIAN_ATOL = {"full": 5e-8, "implicit": 5e-8}
 
 # Error with too few steps (zero for forces, one for Hessians), the test
 # demands at least this much (measured: forces at least 7e-3, Hessian of C2
@@ -64,7 +64,7 @@ TOO_FEW_HESSIAN = {"C2": 1e-2, "BeH2": 1e-5}
 
 # All SCF differentiation modes. The forces of the single-shot mode are exact
 # since the energy is variational.
-MODES = ["full", "implicit", "implicit_nonpure", "experimental"]
+MODES = ["full", "implicit", "experimental"]
 
 
 def _setup(name: str, ktemp: float, mode: str, steps: int | None = None):
@@ -184,12 +184,12 @@ def test_forces(name: str, ktemp: float, mode: str) -> None:
     assert _forces_error(name, ktemp, mode, 0) > TOO_FEW_FORCES
 
 
-# C2 in all modes, BeH2 (25000 K) only in the unrolled mode, see below
+# BeH2 (25000 K) only in the exact modes, see below
 HESSIANS = [
     ("C2", 5000.0, "full"),
     ("C2", 5000.0, "implicit"),
-    ("C2", 5000.0, "implicit_nonpure"),
     ("BeH2", 25000.0, "full"),
+    ("BeH2", 25000.0, "implicit"),
 ]
 
 
@@ -205,16 +205,12 @@ def test_hessian(name: str, ktemp: float, mode: str) -> None:
     assert _hessian_error(name, ktemp, mode, 1) > TOO_FEW_HESSIAN[name]
 
 
-# The second derivative of these modes is not exact for BeH2 for reasons
-# unrelated to the Fermi smearing: the error does not change with the number
-# of steps (three or five steps give the same), and for the implicit mode it is
-# 3.6e-3 without smearing (and at 300 K) as well. It is the linearly
-# convergent case (single-shot: Bolte, Pauwels and Vaiter, Corollary 1) or the
-# accuracy of the implicit second derivative. The measured errors must not
-# grow by more than a factor of 10.
+# The second derivative of the single-shot mode is not exact for BeH2 for
+# reasons unrelated to the Fermi smearing: the error does not change with the
+# number of steps (three or five steps give the same). It is the linearly
+# convergent case (Bolte, Pauwels and Vaiter, Corollary 1). The measured error
+# must not grow by more than a factor of 10.
 NOT_EXACT = {
-    "implicit": 3.4e-4,
-    "implicit_nonpure": 1.5e-5,
     "experimental": 5.4e-4,
 }
 

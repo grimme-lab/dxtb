@@ -100,7 +100,7 @@ def test_full_change_scp() -> None:
         batch_mode=2,
         scp_mode=labels.SCP_MODE_CHARGE,
         # Broyden mixer is not supported in full SCF
-        scf_mode=labels.SCF_MODE_IMPLICIT_NON_PURE,
+        scf_mode=labels.SCF_MODE_IMPLICIT,
     )
 
     # Clear warnings from previous tests

@@ -16,7 +16,7 @@ from dxtb._src.components.interactions import InteractionList
 from dxtb._src.components.interactions.container import Charges, Potential
 from dxtb._src.constants import defaults, labels
 from dxtb._src.timing.decorator import timer_decorator
-from dxtb._src.typing import Tensor
+from dxtb._src.typing import Callable, Tensor
 from dxtb._src.wavefunction import filling
 from dxtb.config import ConfigSCF
 
@@ -38,9 +38,20 @@ __all__ = [
 # Conversion methods are designed as semi-pure functions (i.e. contain
 # `data.attr = x`). Therefore, make sure to delete attributes manually at end
 # of scope (i.e. `del data.attr`).
+#
+# These functions are the only implementation of the SCF map. The stateful
+# methods of `BaseSCF` call them with the SCF's own data and diagonalizer, and
+# the implicit SCF uses them on a snapshot of the data (stateless map).
+
+Diagonalizer = Callable[[Tensor], "tuple[Tensor, Tensor]"]
 
 
-def converged_to_charges(x: Tensor, data: _Data, config: ConfigSCF) -> Charges:
+def converged_to_charges(
+    x: Tensor,
+    data: _Data,
+    config: ConfigSCF,
+    diagonalizer: Diagonalizer | None = None,
+) -> Charges:
     """
     Convert the converged property to charges.
 
@@ -52,6 +63,10 @@ def converged_to_charges(x: Tensor, data: _Data, config: ConfigSCF) -> Charges:
         Object holding SCF data.
     cfg: SCFConfig
         Configuration for SCF settings.
+    diagonalizer : Callable[[Tensor], tuple[Tensor, Tensor]] | None, optional
+        Diagonalizer of the Hamiltonian (returns eigenvalues and
+        eigenvectors). Defaults to the generalized eigensolver of
+        :mod:`.ovlp_diag` with ``cfg.eigen_options``.
 
     Returns
     -------
@@ -73,13 +88,13 @@ def converged_to_charges(x: Tensor, data: _Data, config: ConfigSCF) -> Charges:
         pot = Potential.from_tensor(
             x, data.potential, batch_mode=config.batch_mode
         )
-        return potential_to_charges(pot, data, cfg=config)
+        return potential_to_charges(pot, data, config, diagonalizer)
 
     if config.scp_mode == labels.SCP_MODE_FOCK:
         zero = torch.tensor(0.0, device=x.device, dtype=x.dtype)
         x = torch.where(x != defaults.PADNZ, x, zero)
 
-        data.density = hamiltonian_to_density(x, data, config)
+        data.density = hamiltonian_to_density(x, data, config, diagonalizer)
         return density_to_charges(data.density, data, config)
 
     raise ValueError(
@@ -87,6 +102,7 @@ def converged_to_charges(x: Tensor, data: _Data, config: ConfigSCF) -> Charges:
     )
 
 
+@timer_decorator("Potential", "SCF")
 def charges_to_potential(
     charges: Charges, interactions: InteractionList, data: _Data
 ) -> Potential:
@@ -119,9 +135,11 @@ def charges_to_potential(
     return potential
 
 
-@timer_decorator("Potential", "SCF")
 def potential_to_charges(
-    potential: Potential, data: _Data, cfg: ConfigSCF
+    potential: Potential,
+    data: _Data,
+    cfg: ConfigSCF,
+    diagonalizer: Diagonalizer | None = None,
 ) -> Charges:
     """
     Compute the orbital charges from the potential.
@@ -134,6 +152,10 @@ def potential_to_charges(
         Data cache for intermediary storage during self-consistency.
     cfg: SCFConfig
         Configuration for SCF settings.
+    diagonalizer : Callable[[Tensor], tuple[Tensor, Tensor]] | None, optional
+        Diagonalizer of the Hamiltonian (returns eigenvalues and
+        eigenvectors). Defaults to the generalized eigensolver of
+        :mod:`.ovlp_diag` with ``cfg.eigen_options``.
 
     Returns
     -------
@@ -141,12 +163,15 @@ def potential_to_charges(
         Orbital-resolved partial charges vector.
     """
 
-    data.density = potential_to_density(potential, data, cfg)
+    data.density = potential_to_density(potential, data, cfg, diagonalizer)
     return density_to_charges(data.density, data, cfg)
 
 
 def potential_to_density(
-    potential: Potential, data: _Data, cfg: ConfigSCF
+    potential: Potential,
+    data: _Data,
+    cfg: ConfigSCF,
+    diagonalizer: Diagonalizer | None = None,
 ) -> Tensor:
     """
     Obtain the density matrix from the potential.
@@ -159,6 +184,10 @@ def potential_to_density(
         Data cache for intermediary storage during self-consistency.
     cfg: SCFConfig
         Configuration for SCF settings.
+    diagonalizer : Callable[[Tensor], tuple[Tensor, Tensor]] | None, optional
+        Diagonalizer of the Hamiltonian (returns eigenvalues and
+        eigenvectors). Defaults to the generalized eigensolver of
+        :mod:`.ovlp_diag` with ``cfg.eigen_options``.
 
     Returns
     -------
@@ -167,7 +196,7 @@ def potential_to_density(
     """
 
     data.hamiltonian = potential_to_hamiltonian(potential, data)
-    return hamiltonian_to_density(data.hamiltonian, data, cfg)
+    return hamiltonian_to_density(data.hamiltonian, data, cfg, diagonalizer)
 
 
 @timer_decorator("Charges", "SCF")
@@ -269,7 +298,10 @@ def potential_to_hamiltonian(potential: Potential, data: _Data) -> Tensor:
 
 
 def hamiltonian_to_density(
-    hamiltonian: Tensor, data: _Data, cfg: ConfigSCF
+    hamiltonian: Tensor,
+    data: _Data,
+    cfg: ConfigSCF,
+    diagonalizer: Diagonalizer | None = None,
 ) -> Tensor:
     """
     Compute the density matrix from the Hamiltonian.
@@ -282,6 +314,10 @@ def hamiltonian_to_density(
         Data cache for intermediary storage during self-consistency.
     cfg: SCFConfig
         Configuration for SCF settings.
+    diagonalizer : Callable[[Tensor], tuple[Tensor, Tensor]] | None, optional
+        Diagonalizer of the Hamiltonian (returns eigenvalues and
+        eigenvectors). Defaults to the generalized eigensolver of
+        :mod:`.ovlp_diag` with ``cfg.eigen_options``.
 
     Returns
     -------
@@ -289,9 +325,12 @@ def hamiltonian_to_density(
         Density matrix.
     """
 
-    data.evals, data.evecs = diagonalize(
-        hamiltonian, data.ints.overlap, cfg.eigen_options
-    )
+    if diagonalizer is None:
+        data.evals, data.evecs = diagonalize(
+            hamiltonian, data.ints.overlap, cfg.eigen_options
+        )
+    else:
+        data.evals, data.evecs = diagonalizer(hamiltonian)
 
     # fixed number of alpha and beta electrons from the setup (as in
     # tblite); it is never re-derived from the previous occupation and
@@ -304,7 +343,11 @@ def hamiltonian_to_density(
     mask = mask.unsqueeze(-2).expand([*nel.shape, -1])
 
     # Fermi smearing only for non-zero electronic temperature
-    kt = data.ints.hcore.new_tensor(cfg.fermi.etemp * KELVIN2AU)
+    # `new_tensor` fails on functorch-wrapped tensors (torch 2.4)
+    hcore = data.ints.hcore
+    kt = torch.tensor(
+        cfg.fermi.etemp * KELVIN2AU, device=hcore.device, dtype=hcore.dtype
+    )
     if not torch.all(kt < 3e-7):  # 0.1 Kelvin * K2AU
         data.occupation = filling.get_fermi_occupation(
             nel,

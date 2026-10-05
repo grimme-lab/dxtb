@@ -119,25 +119,6 @@ def solve(
 
     if config.scf_mode == labels.SCF_MODE_IMPLICIT:
         # pylint: disable=import-outside-toplevel
-        from .pure import scf_wrapper
-
-        return scf_wrapper(
-            interactions,
-            occupation,
-            n0,
-            charges,
-            numbers=numbers,
-            ihelp=ihelp,
-            cache=cache,
-            integrals=integrals,
-            config=config,
-            nel=nab,
-            *args,
-            **kwargs,
-        )
-
-    if config.scf_mode == labels.SCF_MODE_IMPLICIT_NON_PURE:
-        # pylint: disable=import-outside-toplevel
         from .implicit import SelfConsistentFieldImplicit as SCF
     elif config.scf_mode == labels.SCF_MODE_FULL:
         # pylint: disable=import-outside-toplevel

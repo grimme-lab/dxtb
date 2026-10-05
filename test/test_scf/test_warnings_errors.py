@@ -36,7 +36,7 @@ from ..utils import coordfile_lih
 opts = {
     "verbosity": 0,
     "maxiter": 50,
-    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
 }
 

@@ -83,10 +83,9 @@ class BaseTSCF(BaseSCF):
             # Broyden is not implemented for SCF with full gradient, but
             # is the default setting. Without changing the setting, the
             # code immediately raises an error, which is inconvenient.
-            if self.config.scf_mode not in (
-                labels.SCF_MODE_IMPLICIT,
-                labels.SCF_MODE_IMPLICIT_NON_PURE,
-            ):
+            # (The check on the mode is also used to instantiate this class
+            # for the implicit mode in tests.)
+            if self.config.scf_mode != labels.SCF_MODE_IMPLICIT:
                 msg = (
                     "Broyden mixer is not implemented for SCF with full "
                     "gradient tracking."
@@ -117,7 +116,6 @@ class BaseTSCF(BaseSCF):
                     msg + " Changing to Fock matrix automatically."
                 )
                 self.config.scp_mode = labels.SCP_MODE_FOCK
-                self._fcn = self.iterate_fockian
 
     def get_overlap(self) -> Tensor:
         """

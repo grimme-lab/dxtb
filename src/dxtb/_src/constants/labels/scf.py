@@ -31,6 +31,9 @@ __all__ = [
     "SCF_MODE_FULL_STRS",
     "SCF_MODE_IMPLICIT",
     "SCF_MODE_IMPLICIT_STRS",
+    "SCF_MODE_REMOVED",
+    "SCF_MODE_REPLACEMENT",
+    "SCF_MODE_REMOVED_STRS",
     "SCF_MODE_IMPLICIT_NON_PURE",
     "SCF_MODE_IMPLICIT_NON_PURE_STRS",
     "SCF_MODE_EXPERIMENTAL",
@@ -84,17 +87,39 @@ SCF_MODE_IMPLICIT = 1
 SCF_MODE_IMPLICIT_STRS = ("default", "implicit")
 """String codes for SCF using implicit function theorem for differentiation."""
 
-SCF_MODE_IMPLICIT_NON_PURE = 2
-"""Integer code for non-pure version of implicitly differentiated SCF."""
+SCF_MODE_REMOVED = 2
+"""Removed integer code (former non-pure implicit mode)."""
 
-SCF_MODE_IMPLICIT_NON_PURE_STRS = (
-    "implicit_old",
-    "implicit_nonpure",
-    "nonpure",
-    "non-pure",
-    "old",
-)
-"""String codes for non-pure version of implicitly differentiated SCF."""
+SCF_MODE_REPLACEMENT = SCF_MODE_IMPLICIT_STRS[-1]
+"""String of the mode that replaces all removed modes."""
+
+SCF_MODE_REMOVED_STRS = {
+    name: SCF_MODE_REPLACEMENT
+    for name in (
+        "implicit_old",
+        "implicit_nonpure",
+        "nonpure",
+        "non-pure",
+        "old",
+    )
+}
+"""
+Removed SCF mode strings (the former non-pure implicit mode, integer code 2)
+and their replacement. The single implicit mode is now the one that
+differentiates the fixed point exactly (first and second derivatives).
+"""
+
+SCF_MODE_IMPLICIT_NON_PURE = SCF_MODE_REMOVED
+"""
+Deprecated alias of :data:`SCF_MODE_REMOVED`, kept so that code naming it
+gets the error that the mode was removed.
+"""
+
+SCF_MODE_IMPLICIT_NON_PURE_STRS = tuple(SCF_MODE_REMOVED_STRS)
+"""
+Deprecated: removed SCF mode strings (see :data:`SCF_MODE_REMOVED_STRS`),
+kept so that code naming them gets the error that the mode was removed.
+"""
 
 SCF_MODE_EXPERIMENTAL = 3
 """Integer code for SCF with single-shot gradient."""
@@ -110,7 +135,7 @@ SCF_MODE_EXPERIMENTAL_STRS = (
 SCF_MODE_MAP = [
     "Full Tracking (unrolling)",
     "implicit",
-    "implicit (non-pure/old)",
+    "(removed)",
     "experimental",
 ]
 """String map (for printing) of SCF modes."""

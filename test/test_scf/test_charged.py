@@ -38,7 +38,7 @@ from .samples_charged import samples
 
 opts = {
     "verbosity": 0,
-    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
 }
 

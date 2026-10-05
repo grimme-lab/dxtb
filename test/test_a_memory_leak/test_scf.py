@@ -36,8 +36,6 @@ opts = {"verbosity": 0, "maxiter": 50, "exclude": ["rep", "disp", "hal"]}
 repeats = 5
 
 
-# FIXME: xitorch's memory leak
-@pytest.mark.xfail
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("run_gc", [False, True])
@@ -51,7 +49,7 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
         positions = sample["positions"].clone().to(**dd)
         charges = torch.tensor(0.0, **dd)
 
-        options = dict(opts, **{"scf_mode": "nonpure"})
+        options = dict(opts, **{"scf_mode": "implicit"})
         calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
 
         # variables to be differentiated

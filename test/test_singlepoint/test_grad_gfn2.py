@@ -39,7 +39,7 @@ f = Path(__file__).resolve().parent / "refs" / "gfn2"
 
 opts = {
     "maxiter": 50,
-    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
     "verbosity": 0,
 }
@@ -50,7 +50,7 @@ opts = {
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "H2O", "SiH4"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 50  # slightly larger for H2O!
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -97,7 +97,7 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("name", ["H2", "H2O", "CH4"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 def test_num(name: str, scf_mode: str) -> None:
     dtype = torch.double
     dd: DD = {"device": DEVICE, "dtype": dtype}
