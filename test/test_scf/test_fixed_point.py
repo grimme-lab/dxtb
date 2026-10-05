@@ -73,7 +73,7 @@ class Toy:
         return x
 
 
-def close(a: torch.Tensor, b: torch.Tensor, rtol: float) -> bool:
+def is_close(a: torch.Tensor, b: torch.Tensor, rtol: float) -> bool:
     """Max abs deviation relative to the largest reference entry (the forward
     solve is only converged to ~1e-11, which limits the comparison)."""
     return (a - b).abs().max().item() < rtol * max(1.0, b.abs().max().item())
@@ -90,7 +90,7 @@ def test_first_derivative(batch: int | None) -> None:
     gi = torch.autograd.grad(loss(t.implicit()), [t.W, t.p])
     gu = torch.autograd.grad(loss(t.unrolled()), [t.W, t.p])
     for a, b in zip(gi, gu):
-        assert close(a, b, 1e-9)
+        assert is_close(a, b, 1e-9)
 
 
 @pytest.mark.parametrize("batch", [None, 3])
@@ -106,7 +106,7 @@ def test_second_derivative_is_exact(batch: int | None) -> None:
         return torch.autograd.grad((g * dp).sum(), [t.W, t.p])
 
     for a, b in zip(hvp(t.implicit()), hvp(t.unrolled())):
-        assert close(a, b, 1e-8)
+        assert is_close(a, b, 1e-8)
 
 
 def test_dense_fallback_matches() -> None:
@@ -117,7 +117,7 @@ def test_dense_fallback_matches() -> None:
         loss(t.implicit(bck_options={"maxiter": 0})), [t.W, t.p]
     )
     for a, b in zip(ref, fb):
-        assert close(a, b, 1e-9)
+        assert is_close(a, b, 1e-9)
 
 
 def test_batch_entries_converge_at_different_rates() -> None:
@@ -128,7 +128,7 @@ def test_batch_entries_converge_at_different_rates() -> None:
     gi = torch.autograd.grad(loss(t.implicit()), [t.W, t.p])
     gu = torch.autograd.grad(loss(t.unrolled(2000)), [t.W, t.p])
     for a, b in zip(gi, gu):
-        assert close(a, b, 1e-7)
+        assert is_close(a, b, 1e-7)
 
 
 def test_no_grad_bypasses_function() -> None:
@@ -226,7 +226,7 @@ def test_dense_fallback_second_order_and_batched() -> None:
     fb = hvp(t.implicit(bck_options={"maxiter": 0}))
     assert any("dense" in msg for msg, _ in OutputHandler.warnings)
     for a, b in zip(fb, ref):
-        assert close(a, b, 1e-8)
+        assert is_close(a, b, 1e-8)
 
 
 def test_small_upstream_gradient() -> None:
@@ -235,7 +235,7 @@ def test_small_upstream_gradient() -> None:
     x = t.implicit()
     (g1,) = torch.autograd.grad(x, t.p, torch.ones_like(x), retain_graph=True)
     (g2,) = torch.autograd.grad(x, t.p, 1e-9 * torch.ones_like(x))
-    assert close(g2 * 1e9, g1, 1e-8)
+    assert is_close(g2 * 1e9, g1, 1e-8)
 
 
 def test_float32() -> None:
@@ -267,7 +267,7 @@ def test_nonleaf_intermediate() -> None:
     x, _ = equilibrium(g, torch.zeros(2, **DD), **FWD)
     (d_inter,) = torch.autograd.grad((x**2).sum(), p, retain_graph=True)
     (d_leaf,) = torch.autograd.grad((x**2).sum(), p0)
-    assert close(d_inter, d_leaf, 1e-8)
+    assert is_close(d_inter, d_leaf, 1e-8)
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
@@ -294,7 +294,7 @@ def test_batch_entry_with_zero_gradient(dtype: torch.dtype) -> None:
     rtol = 1e-4 if dtype == torch.float32 else 1e-8  # adjoint atol 1e-9
     for a, b in zip(gi, gu):
         assert (a[1] == 0).all()
-        assert close(a, b, rtol)
+        assert is_close(a, b, rtol)
 
 
 def test_repeated_backward() -> None:
@@ -304,7 +304,7 @@ def test_repeated_backward() -> None:
     g1 = torch.autograd.grad(out, [t.W, t.p], retain_graph=True)
     g2 = torch.autograd.grad(out, [t.W, t.p])
     for a, b in zip(g1, g2):
-        assert close(a, b, 1e-12)
+        assert is_close(a, b, 1e-12)
 
 
 def test_iterations_count_forward_solve_only() -> None:
@@ -347,7 +347,7 @@ def test_method_none_means_default() -> None:
     """``method=None`` selects the default solver (as in xitorch)."""
     t = Toy()
     x, _ = equilibrium(t.g, t.x0, **{**FWD, "method": None})
-    assert close(x, t.implicit(), 1e-12)
+    assert is_close(x, t.implicit(), 1e-12)
 
 
 def test_default_tolerance_follows_forward_tolerance() -> None:
