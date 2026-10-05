@@ -47,6 +47,7 @@ class _MapData:
         self.ints = copy.copy(data.ints)
         self.n0 = data.n0
         self.occupation = data.occupation
+        self.nel = data.nel
         self.ihelp = data.ihelp
         self.cache = data.cache
         self.charges = dict(data.charges)
