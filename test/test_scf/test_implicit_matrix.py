@@ -71,15 +71,28 @@ REFERENCE = "full"  # only used to evaluate values for finite differences
 
 # name -> (molecule names, total charge)
 SYSTEMS: dict[str, tuple[list[str], float]] = {
+    "H2": (["H2"], 0.0),
+    "LiH": (["LiH"], 0.0),
     "H2O": (["H2O"], 0.0),
     "H2O+": (["H2O"], 1.0),
+    "LYS_xao": (["LYS_xao"], 0.0),
     "batch_H2O_CH4": (["H2O", "CH4"], 0.0),
     "batch_H2_LYS": (["H2", "LYS_xao"], 0.0),
+    # 44 SCF iterations (slowest of all samples), but a HOMO-LUMO gap of only
+    # 4.6 mEh: strongly fractional occupations, i.e., it probes the derivatives
+    # of the Fermi smearing rather than the SCF
+    "slow": (["tmpda"], 0.0),
+    # 24 SCF iterations (second slowest), well gapped
+    "slow_gap": (["LYS_xao_dist"], 0.0),
 }
 
 # systems where only a reduced set of cells is run (cost); the batches only
 # check the batching, the single systems cover the full set of cells
-BIG = ("batch_H2O_CH4", "batch_H2_LYS")
+BIG = ("LYS_xao", "batch_H2O_CH4", "batch_H2_LYS", "slow", "slow_gap")
+
+# systems that are only run on request (`-m large`), the default run (`-m "not
+# large"`, see tox.ini) covers the remaining systems
+LARGE = ("H2", "LiH", "LYS_xao", "slow", "slow_gap")
 
 QUANTITIES = ["E", "q", "q2", "dip"]
 FIRST = ["pos", "field", "param"]
@@ -379,8 +392,32 @@ def project(system: str, deriv: str, val: torch.Tensor) -> torch.Tensor:
 # `strict=True` forces removal of the marker once a cell is fixed; cells within
 # 3x of the tolerance are not strict (their outcome depends on FD/SCF noise).
 KNOWN_FAILURES: dict[tuple[str, str, str, str], tuple[str, bool]] = {
+    ("full", "H2", "pos", "dip"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 1.09e-08)",
+        False,
+    ),
+    ("full", "LiH", "pos", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 2.70e-08)",
+        False,
+    ),
+    ("full", "LiH", "pos", "dip"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 5.25e-08)",
+        False,
+    ),
+    ("full", "LiH", "field", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 4.58e-07)",
+        False,
+    ),
+    ("full", "LiH", "field", "dip"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 8.92e-07)",
+        False,
+    ),
     ("full", "batch_H2O_CH4", "hvp_pos", "q2"): (
         "unrolled derivative of a non-variational quantity is inexact (err 3.93e-03)",
+        True,
+    ),
+    ("full", "LYS_xao", "hvp_pos", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 4.16e-03)",
         True,
     ),
     ("full", "batch_H2_LYS", "pos", "q2"): (
@@ -391,6 +428,58 @@ KNOWN_FAILURES: dict[tuple[str, str, str, str], tuple[str, bool]] = {
         "unrolled derivative of a non-variational quantity is inexact (err 2.72e-03)",
         True,
     ),
+    ("implicit", "slow", "hvp_pos", "E"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
+        True,
+    ),
+    ("implicit", "slow", "hvp_pos", "q2"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
+        True,
+    ),
+    ("full", "slow", "pos", "q2"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
+        True,
+    ),
+    ("full", "slow", "field", "q2"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
+        True,
+    ),
+    ("full", "slow", "param", "q2"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
+        True,
+    ),
+    ("full", "slow", "hvp_pos", "E"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
+        True,
+    ),
+    ("full", "slow", "hvp_pos", "q2"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
+        True,
+    ),
+    ("implicit", "slow_gap", "hvp_pos", "q2"): (
+        "FD-reference-noise limited, slow-converging system (err 2.13e-06, tol 1e-06)",
+        False,
+    ),
+    ("full", "slow_gap", "hvp_pos", "E"): (
+        "FD-reference-noise limited, slow-converging system (err 1.74e-06 on CI, 1e-07 locally, tol 1e-06)",
+        False,
+    ),
+    ("full", "slow_gap", "pos", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 4.22e-03)",
+        False,
+    ),
+    ("full", "slow_gap", "field", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 6.21e+00)",
+        False,
+    ),
+    ("full", "slow_gap", "param", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 1.14e-03)",
+        False,
+    ),
+    ("full", "slow_gap", "hvp_pos", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 5.41e+06)",
+        False,
+    ),
 }
 
 
@@ -400,6 +489,8 @@ def _all_cells() -> list:
         for system in SYSTEMS:
             for d, q in _cells_for(system):
                 marks = []
+                if system in LARGE:
+                    marks.append(pytest.mark.large)
                 key = (mode, system, d, q)
                 if key in KNOWN_FAILURES:
                     reason, strict = KNOWN_FAILURES[key]
