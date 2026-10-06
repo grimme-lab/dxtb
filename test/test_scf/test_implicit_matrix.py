@@ -86,8 +86,13 @@ SYSTEMS: dict[str, tuple[list[str], float]] = {
     "slow_gap": (["LYS_xao_dist"], 0.0),
 }
 
-# systems where only a reduced set of cells is run (cost)
-BIG = ("LYS_xao", "batch_H2_LYS", "slow", "slow_gap")
+# systems where only a reduced set of cells is run (cost); the batches only
+# check the batching, the single systems cover the full set of cells
+BIG = ("LYS_xao", "batch_H2O_CH4", "batch_H2_LYS", "slow", "slow_gap")
+
+# systems that are only run on request (`-m large`), the default run (`-m "not
+# large"`, see tox.ini) covers the remaining systems
+LARGE = ("H2", "LiH", "LYS_xao", "slow", "slow_gap")
 
 QUANTITIES = ["E", "q", "q2", "dip"]
 FIRST = ["pos", "field", "param"]
@@ -484,6 +489,8 @@ def _all_cells() -> list:
         for system in SYSTEMS:
             for d, q in _cells_for(system):
                 marks = []
+                if system in LARGE:
+                    marks.append(pytest.mark.large)
                 key = (mode, system, d, q)
                 if key in KNOWN_FAILURES:
                     reason, strict = KNOWN_FAILURES[key]

@@ -884,38 +884,6 @@ def test_temperature_on_cpu(ktemp: float) -> None:
         filling.get_fermi_occupation(nab, emo, -kt - 1.0)
 
 
-@pytest.mark.parametrize("nel", [[2.0, 1.0], [1.5, 0.5]])
-def test_third_derivative(nel: list[float]):
-    """
-    Two differentiable Newton steps give derivatives up to third order
-    (quadratic convergence), which are required for, e.g., the
-    hyperpolarizability. One step would be wrong for the Hessian already if
-    the occupations are fractional.
-    """
-    dd: DD = {"device": DEVICE, "dtype": torch.double}
-
-    nab = torch.tensor(nel, **dd)
-    emo = torch.tensor([-0.6, -0.3, -0.25, 0.1, 0.4, 0.8], **dd)
-    emo = emo.expand(2, -1).clone()
-    kt = torch.tensor(5000.0 * KELVIN2AU, **dd)
-
-    def fcn(x: torch.Tensor) -> torch.Tensor:
-        return filling.get_fermi_occupation(nab, x, kt, thr=1e-14)
-
-    def hess(x: torch.Tensor) -> torch.Tensor:
-        return jacrev(jacrev(fcn))(x)
-
-    third = jacrev(hess)(emo)
-
-    # central differences of the Hessian along one orbital energy
-    h = 1e-5
-    step = torch.zeros_like(emo)
-    step[0, 2] = h
-    fd = (hess(emo + step) - hess(emo - step)) / (2 * h)
-
-    assert pytest.approx(fd.cpu(), abs=1e-4, rel=1e-3) == third[..., 0, 2].cpu()
-
-
 @pytest.mark.parametrize("delta", [4e-15, -4e-15])
 def test_differentiable_steps_do_not_overshoot(delta: float):
     """

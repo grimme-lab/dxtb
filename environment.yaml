@@ -22,8 +22,8 @@ channels:
 dependencies:
   - numpy
   - pydantic
-  - python>=3.8,<3.13
-  - pytorch>=2.4.0,<3
+  - python>=3.10,<3.13
+  - pytorch>=2.5.0,<3
   - scipy # for xitorch
   - pytest
   - tomli

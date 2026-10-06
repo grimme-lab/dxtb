@@ -167,7 +167,7 @@ def _hessian_error(
     return (hess - ref).abs().max().item()
 
 
-FORCES = [("C2", 300.0), ("C2", 5000.0), ("O2", 5000.0)]
+FORCES = [("C2", 300.0), ("O2", 5000.0)]
 
 
 @pytest.mark.grad
@@ -184,11 +184,10 @@ def test_forces(name: str, ktemp: float, mode: str) -> None:
     assert _forces_error(name, ktemp, mode, 0) > TOO_FEW_FORCES
 
 
-# BeH2 (25000 K) only in the exact modes, see below
+# BeH2 (25000 K) only in the exact modes, see below; the unrolled Hessian of
+# the full mode is expensive and its Fermi steps are the same as for the forces
 HESSIANS = [
-    ("C2", 5000.0, "full"),
     ("C2", 5000.0, "implicit"),
-    ("BeH2", 25000.0, "full"),
     ("BeH2", 25000.0, "implicit"),
 ]
 

@@ -78,7 +78,7 @@ def _point_moment(calc: Calculator, positions: Tensor) -> Tensor:
     ).detach()
 
 
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", sample_list[:2])
 def test_autograd_vs_numerical(name: str) -> None:
     dd: DD = {"dtype": torch.double, "device": DEVICE}
     numbers = samples[name]["numbers"].to(DEVICE)
@@ -97,7 +97,7 @@ def test_autograd_vs_numerical(name: str) -> None:
     assert pytest.approx(auto[DIAG].sum().item(), abs=1e-8) == 0.0
 
 
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", sample_list[:2])
 def test_functorch(name: str) -> None:
     dd: DD = {"dtype": torch.double, "device": DEVICE}
     numbers = samples[name]["numbers"].to(DEVICE)

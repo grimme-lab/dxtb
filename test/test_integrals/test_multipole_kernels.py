@@ -188,7 +188,10 @@ def test_gradcheck(algorithm: str) -> None:
 
     for func, args in ((overlap, inputs[:5]), (quadrupole, (*inputs, origin))):
         assert torch.autograd.gradcheck(func, args, atol=1e-6)
-        assert torch.autograd.gradgradcheck(func, args, atol=1e-5)
+        # the full second-order check takes about 10 s per kernel
+        assert torch.autograd.gradgradcheck(
+            func, args, atol=1e-5, fast_mode=True
+        )
 
 
 @pytest.mark.skipif(

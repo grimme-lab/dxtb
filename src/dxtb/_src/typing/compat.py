@@ -24,8 +24,6 @@ all the special cases are handled here.
 
 from __future__ import annotations
 
-import sys
-
 from tad_mctc.typing.compat import (
     Callable,
     CountingFunction,
@@ -69,27 +67,5 @@ __all__ = [
 Gather = Callable[[Tensor, int, Tensor], Tensor]
 Scatter = Callable[[Tensor, int, Tensor, str], Tensor]
 
-if sys.version_info >= (3, 10):
-    # "from __future__ import annotations" only affects type annotations
-    # not type aliases, hence "|" is not allowed before Python 3.10
-    ScatterOrGather = Gather | Scatter
-    Slicer = list[slice] | tuple[slice] | tuple[type(...)]
-elif sys.version_info >= (3, 9):
-    # in Python 3.9, "from __future__ import annotations" works with type
-    # aliases but requires using `Union` from typing
-    from typing import Union
-
-    ScatterOrGather = Union[Gather, Scatter]
-    Slicer = Union[list[slice], tuple[slice], tuple[Ellipsis]]
-elif sys.version_info >= (3, 8):
-    # in Python 3.8, "from __future__ import annotations" only affects
-    # type annotations not type aliases
-    from typing import List, Tuple, Union
-
-    ScatterOrGather = Union[Gather, Scatter]
-    Slicer = Union[List[slice], Tuple[slice], Tuple]
-else:
-    raise RuntimeError(
-        f"'dxtb' requires at least Python 3.8 (Python {sys.version_info.major}."
-        f"{sys.version_info.minor}.{sys.version_info.micro} found)."
-    )
+ScatterOrGather = Gather | Scatter
+Slicer = list[slice] | tuple[slice] | tuple[type(...)]
