@@ -189,7 +189,10 @@ def assemble_multipole_1d(
         Integrals of shape ``(nvec, ncomp, nsph_a, nsph_b)``.
     """
     li, lj = angular
-    emax = max((order for comp in components for order in comp), default=0)
+    emax = 0
+    for comp in components:
+        for order in comp:
+            emax = max(emax, order)
 
     itrafo, jtrafo = _transforms(angular, vec)
     _, xij, rpi, rpj, sij = _primitive_pairs(alpha, coeff, vec)
