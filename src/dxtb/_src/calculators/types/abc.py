@@ -416,7 +416,8 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        """Return Wiberg bond orders.
+        """
+        Return Wiberg bond orders.
 
         Restricted output has shape ``(..., nat, nat)``. UHF output has shape
         ``(..., 2, nat, nat)`` in total/magnetization representation.
@@ -434,7 +435,8 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        """Return MO coefficients.
+        """
+        Return MO coefficients.
 
         UHF output has shape ``(..., 2, nao, nao)`` in alpha/beta form.
         """
@@ -451,7 +453,8 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        """Return the density matrix.
+        """
+        Return the density matrix.
 
         UHF output has shape ``(..., 2, nao, nao)`` in alpha/beta form.
         """
@@ -528,7 +531,8 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        """Return orbital-resolved Mulliken charges.
+        """
+        Return orbital-resolved Mulliken charges.
 
         Restricted output has shape ``(..., nao)``. UHF output has shape
         ``(..., 2, nao)`` in total/magnetization form.
@@ -556,7 +560,8 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        """Return molecular-orbital energies.
+        """
+        Return molecular-orbital energies.
 
         Restricted output has shape ``(..., nao)``. UHF output has shape
         ``(..., 2, nao)`` in alpha/beta form.
@@ -574,7 +579,8 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        """Return alpha/beta orbital occupations.
+        """
+        Return alpha/beta orbital occupations.
 
         Both restricted and UHF output have shape ``(..., 2, nao)``. In a
         restricted calculation, the two occupation rows fill one shared set
@@ -593,7 +599,8 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        """Return orbital SCF potentials.
+        """
+        Return orbital SCF potentials.
 
         Restricted output has shape ``(..., nao)``. UHF output has shape
         ``(..., 2, nao)`` in total/magnetization form.

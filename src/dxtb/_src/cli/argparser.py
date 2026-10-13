@@ -287,7 +287,7 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         "--spin-polarization-scale",
         dest="spin_polarization_scale",
         type=float,
-        default=1.0,
+        default=defaults.WSCALE,
         help="R|Scaling factor for the spin constants (--spin-polarized).",
     )
     p.add_argument(

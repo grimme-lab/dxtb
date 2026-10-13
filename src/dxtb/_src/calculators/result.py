@@ -39,10 +39,10 @@ class Result(TensorLike):
     """
 
     charges: Charges
-    """Mulliken charges; UHF channels are total and magnetization."""
+    """Self-consistent orbital-resolved Mulliken partial charges; UHF channels are total and magnetization."""
 
     coefficients: Tensor
-    """MO coefficients; UHF shape is ``(..., 2, nao, nao)``."""
+    """LCAO-MO coefficients (eigenvectors of Fockian); UHF shape is ``(..., 2, nao, nao)``."""
 
     density: Tensor
     """Density matrix; UHF shape is ``(..., 2, nao, nao)`` in alpha/beta."""
@@ -51,13 +51,13 @@ class Result(TensorLike):
     """Energies of classical contributions."""
 
     emo: Tensor
-    """MO energies; UHF shape is ``(..., 2, nao)`` in alpha/beta."""
+    """Energy of molecular orbitals (sorted by increasing energy); UHF shape is ``(..., 2, nao)`` in alpha/beta."""
 
     fenergy: Tensor
     """Atom-resolved electronic free energy from fractional occupation."""
 
     hamiltonian: Tensor
-    """Full Hamiltonian; UHF shape is ``(..., 2, nao, nao)``."""
+    """Full Hamiltonian matrix (H0 + H1); UHF shape is ``(..., 2, nao, nao)``."""
 
     integrals: IntegralMatrices
     """Collection of integrals including overlap and core Hamiltonian (H0)."""
@@ -69,7 +69,7 @@ class Result(TensorLike):
     """Number of wavefunction channels represented by the result."""
 
     potential: Potential
-    """SCF potentials; UHF channels are total and magnetization."""
+    """Self-consistent potentials; UHF channels are total and magnetization."""
 
     scf: Tensor
     """Atom-resolved energy from the self-consistent field (SCF) calculation."""
