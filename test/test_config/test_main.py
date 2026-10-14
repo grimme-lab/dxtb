@@ -57,6 +57,7 @@ def test_default() -> None:
     assert cfg.scf.x_atol == defaults.X_ATOL
     assert cfg.scf.f_atol == defaults.F_ATOL
     assert cfg.scf.force_convergence == False
+    assert cfg.scf.uhf_mode == defaults.UHF_MODE
 
     assert cfg.scf.fermi.etemp == defaults.FERMI_ETEMP
     assert cfg.scf.fermi.maxiter == defaults.FERMI_MAXITER
@@ -152,3 +153,12 @@ def test_int_algorithm_fail_libcint() -> None:
     # the algorithm only exists for the PyTorch drivers
     with pytest.raises(ValueError):
         Cfg(int_driver=labels.INTDRIVER_LIBCINT, int_algorithm="os")
+
+
+def test_uhf_mode() -> None:
+    assert Cfg(uhf_mode=True).scf.uhf_mode is True
+    assert Cfg.from_dict({"uhf_mode": True}).scf.uhf_mode is True
+    assert Cfg(uhf_mode=True).info()["SCF Options"]["Unrestricted Mode"] is True
+
+    with pytest.raises(TypeError):
+        Cfg(uhf_mode=1)  # type: ignore

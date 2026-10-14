@@ -125,6 +125,7 @@ def solve_nonselfconsistent(
         "energy": energy,
         "fenergy": fenergy,
         "hamiltonian": data.hamiltonian,
+        "nspin": data.nspin,
         "occupation": data.occupation,
         "potential": _zero_potential(charges, config.batch_mode),
         "iterations": 0,

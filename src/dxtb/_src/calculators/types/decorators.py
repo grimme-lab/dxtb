@@ -241,7 +241,8 @@ def cache(func: F) -> F:
         cache_key: str = func.__name__
         key = cache_key.replace("_numerical", "").replace("_analytical", "")
 
-        hashed_key = ""
+        # restricted and unrestricted results differ (e.g. in their shapes)
+        hashed_key = f"nspin{self.nspin}_"
 
         all_args = args + tuple(kwargs.values())
         for i, arg in enumerate(all_args):
