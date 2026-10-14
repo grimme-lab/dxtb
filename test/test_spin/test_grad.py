@@ -183,6 +183,7 @@ def test_gradient_gfn2(dtype: torch.dtype, name: str, mode: str) -> None:
 
 
 @pytest.mark.grad
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2+", "OH"])
 @pytest.mark.parametrize("mode", ["", "_uhf"])
