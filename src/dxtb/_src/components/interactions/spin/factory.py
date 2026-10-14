@@ -1,7 +1,7 @@
 # This file is part of dxtb.
 #
 # SPDX-Identifier: Apache-2.0
-# Copyright (C) 2024 Grimme Group
+# Copyright (C) 2026 Grimme Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import torch
 
-from dxtb._src.typing import Tensor
+from dxtb._src.typing import DD, Tensor, get_default_dtype
 from dxtb._src.typing.exceptions import DeviceError
 
 from .constants import MAX_SPIN_ELEMENT, load_spin_constants
@@ -80,5 +80,9 @@ def new_spin_polarization(
             f"({numbers.device}) do not match."
         )
 
-    constants = load_spin_constants(device=numbers.device, dtype=dtype)
-    return SpinPolarization(constants, wscale=wscale)
+    dd: DD = {
+        "device": numbers.device,
+        "dtype": dtype if dtype is not None else get_default_dtype(),
+    }
+
+    return SpinPolarization(load_spin_constants(**dd), wscale=wscale, **dd)

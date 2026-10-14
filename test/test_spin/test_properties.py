@@ -42,7 +42,8 @@ store = {"store_overlap": True, "store_density": True}
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_multipoles(dtype: torch.dtype) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
-    tol = 1e-4 if dtype == torch.double else 1e-3
+    # float32: quadrupole moments deviate by ~1e-3 (SCF convergence)
+    tol = 1e-4 if dtype == torch.double else 5e-3
 
     sample = samples["OH"]
     numbers = sample["numbers"].to(DEVICE)

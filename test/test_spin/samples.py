@@ -20,7 +20,9 @@ Data for testing spin-polarized (UHF) calculations.
 Reference values obtained with tblite 0.7.0 (accuracy 1, Broyden mixing with
 damping 0.4, electronic temperature 300 K). The UHF references without
 spin-polarization interaction (``*_uhf``) correspond to tblite's two-channel
-calculation with a spin-polarization scale of zero.
+calculation with a spin-polarization scale of zero. The spin-polarization
+energies (``espin*``) are not reported by tblite and were obtained with an
+additional print statement after the SCF convergence in tblite 0.7.0.
 
 Charges are given in the charge/magnetization representation, i.e., the first
 channel contains the total partial charges and the second channel contains
@@ -77,6 +79,18 @@ class Refs(TypedDict, total=False):
     qshgfn2: Tensor
     """Shell charge/magnetization for spin-polarized GFN2-xTB."""
 
+    espingfn1: Tensor
+    """
+    Spin-polarization energy (GFN1-xTB) of the converged SCF, obtained with a
+    print statement in tblite 0.7.0 (see `qshgfn1` for the magnetization).
+    """
+
+    espingfn2: Tensor
+    """
+    Spin-polarization energy (GFN2-xTB) of the converged SCF, obtained with a
+    print statement in tblite 0.7.0 (see `qshgfn2` for the magnetization).
+    """
+
     dpgfn2: Tensor
     """Atomic dipole moments (charge/magnetization) for spin-polarized GFN2."""
 
@@ -123,6 +137,7 @@ refs: dict[str, Refs] = {
             ],
             dtype=torch.float64,
         ),
+        "espingfn2": torch.tensor(-3.9592820029647306e-02, dtype=torch.float64),
         "qshgfn2": torch.tensor(
             [
                 [
@@ -182,6 +197,7 @@ refs: dict[str, Refs] = {
             ],
             dtype=torch.float64,
         ),
+        "espingfn2": torch.tensor(0.0000000000000000e00, dtype=torch.float64),
         "qshgfn2": torch.tensor(
             [
                 [
@@ -257,6 +273,7 @@ extra: dict[str, Record] = {
             ],
             dtype=torch.float64,
         ),
+        "espingfn1": torch.tensor(-1.7906250000000012e-02, dtype=torch.float64),
         "qshgfn1": torch.tensor(
             [
                 [
@@ -322,6 +339,7 @@ extra: dict[str, Record] = {
             ],
             dtype=torch.float64,
         ),
+        "espingfn1": torch.tensor(-1.5602338295624327e-02, dtype=torch.float64),
         "qshgfn1": torch.tensor(
             [
                 [
@@ -392,6 +410,7 @@ extra: dict[str, Record] = {
             ],
             dtype=torch.float64,
         ),
+        "espingfn2": torch.tensor(-1.5980584394218934e-02, dtype=torch.float64),
         "qshgfn2": torch.tensor(
             [
                 [
@@ -579,6 +598,7 @@ extra: dict[str, Record] = {
             ],
             dtype=torch.float64,
         ),
+        "espingfn2": torch.tensor(-1.4829350643863622e-02, dtype=torch.float64),
         "qshgfn2": torch.tensor(
             [
                 [
@@ -831,6 +851,7 @@ extra: dict[str, Record] = {
             ],
             dtype=torch.float64,
         ),
+        "espingfn1": torch.tensor(-5.2730509771279493e-02, dtype=torch.float64),
         "qshgfn1": torch.tensor(
             [
                 [

@@ -38,7 +38,12 @@ __all__ = ["ChargeChannel", "Interaction", "InteractionCache"]
 
 
 class ChargeChannel(str, Enum):
-    """Charge representation channel consumed by an interaction."""
+    """
+    Charge representation channel consumed by an interaction.
+
+    It is intended to say which half of the spin-resolved density an interaction acts on.
+    Thus the interaction does not need to know anything about spin and just recieves the correct density.
+    """
 
     TOTAL = "total"
     """Total-charge channel."""

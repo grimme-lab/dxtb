@@ -1,7 +1,7 @@
 # This file is part of dxtb.
 #
 # SPDX-Identifier: Apache-2.0
-# Copyright (C) 2024 Grimme Group
+# Copyright (C) 2026 Grimme Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -80,12 +80,11 @@ def load_spin_constants(
     -------
     Tensor
         Spin constants of shape ``(MAX_SPIN_ELEMENT + 1, 6)``. The first row
-        corresponds to padding (``Z=0``) and is zero, so that the table can
+        is a dummy entry (zeros) for padding (``Z=0``), so that the table can
         directly be indexed with atomic numbers.
     """
     dd: DD = {
         "device": get_default_device() if device is None else device,
         "dtype": get_default_dtype() if dtype is None else dtype,
     }
-    table = torch.tensor(_read_spin_constants(), **dd)
-    return torch.cat((torch.zeros((1, table.shape[-1]), **dd), table), dim=0)
+    return torch.tensor(_read_spin_constants(), **dd)

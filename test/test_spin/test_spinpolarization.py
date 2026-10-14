@@ -17,7 +17,8 @@
 """
 Run tests for the energy and potential of the spin-polarization interaction.
 
-The shell-resolved magnetization charges are taken from tblite.
+The shell-resolved magnetization charges and the reference energies are taken
+from tblite 0.7.0 (see `samples.py`).
 """
 
 from __future__ import annotations
@@ -35,41 +36,28 @@ from dxtb._src.components.interactions.spin import (
     load_spin_constants,
     new_spin_polarization,
 )
-from dxtb._src.typing import DD, Slicers, Tensor
+from dxtb._src.typing import DD, Slicers
 
 from ..conftest import DEVICE
 from .samples import samples
 
-sample_list = [("H2+", "gfn1"), ("OH", "gfn1"), ("OH", "gfn2"), ("LiH", "gfn2")]
+sample_list = [
+    ("H2+", "gfn1"),
+    ("OH", "gfn1"),
+    ("OH", "gfn2"),
+    ("LiH", "gfn2"),
+    ("SiH4", "gfn2"),
+    ("C2H5O", "gfn2"),
+]
 
 
-def reference_energy(
-    numbers: Tensor, ihelp: IndexHelper, qsh: Tensor
-) -> Tensor:
-    """Spin energy from explicit loops as implemented in tblite."""
-    table = load_spin_constants(dtype=qsh.dtype, device=qsh.device)
-    angular = ihelp.angular.tolist()
-    sh2at = ihelp.shells_to_atom.tolist()
-
-    e = torch.tensor(0.0, dtype=qsh.dtype, device=qsh.device)
-    for i, (li, ati) in enumerate(zip(angular, sh2at)):
-        for j, (lj, atj) in enumerate(zip(angular, sh2at)):
-            if ati != atj:
-                continue
-            w = table[numbers[ati], ANGULAR_PAIR_INDEX[li][lj]]
-            e = e + 0.5 * qsh[i] * w * qsh[j]
-    return e
-
-
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name,gfn", sample_list)
-def test_single(dtype: torch.dtype, name: str, gfn: str) -> None:
-    tol = sqrt(torch.finfo(dtype).eps)
+def single(dtype: torch.dtype, name: str, gfn: str, tol: float) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     qsh = sample[f"qsh{gfn}"].to(**dd)[1]  # magnetization channel
+    ref = sample[f"espin{gfn}"].to(**dd)
     par = GFN1_XTB if gfn == "gfn1" else GFN2_XTB
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -77,12 +65,26 @@ def test_single(dtype: torch.dtype, name: str, gfn: str) -> None:
     cache = spin.get_cache(numbers=numbers, ihelp=ihelp)
 
     e = spin.get_monopole_shell_energy(cache, qsh)
-    ref = reference_energy(numbers, ihelp, qsh)
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == e.sum(-1).cpu()
 
     # potential is the derivative of the energy
     v = spin.get_monopole_shell_potential(cache, qsh)
     assert pytest.approx((2 * e).cpu(), abs=tol, rel=tol) == (qsh * v).cpu()
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name,gfn", sample_list)
+def test_single(dtype: torch.dtype, name: str, gfn: str) -> None:
+    single(dtype, name, gfn, tol=sqrt(torch.finfo(dtype).eps))
+
+
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_single_large(dtype: torch.dtype) -> None:
+    # The magnetization of the tblite run used for the reference energy
+    # differs by up to 4e-7 from the one in `samples.py` (SCF convergence),
+    # which changes the energy by about 2e-8.
+    single(dtype, "CrCp2", "gfn1", tol=max(sqrt(torch.finfo(dtype).eps), 1e-7))
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -105,22 +107,18 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
             sample2["qshgfn1"].to(**dd)[1],
         )
     )
+    ref = torch.stack(
+        [
+            sample1["espingfn1"].to(**dd),
+            sample2["espingfn1"].to(**dd),
+        ]
+    )
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     spin = new_spin_polarization(numbers, **dd)
     cache = spin.get_cache(numbers=numbers, ihelp=ihelp)
     e = spin.get_monopole_shell_energy(cache, qsh).sum(-1)
 
-    ref = torch.stack(
-        [
-            reference_energy(
-                s["numbers"].to(DEVICE),
-                IndexHelper.from_numbers(s["numbers"].to(DEVICE), GFN1_XTB),
-                s["qshgfn1"].to(**dd)[1],
-            )
-            for s in (sample1, sample2)
-        ]
-    )
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == e.cpu()
 
 

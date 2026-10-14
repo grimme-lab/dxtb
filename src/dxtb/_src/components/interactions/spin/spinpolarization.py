@@ -1,7 +1,7 @@
 # This file is part of dxtb.
 #
 # SPDX-Identifier: Apache-2.0
-# Copyright (C) 2024 Grimme Group
+# Copyright (C) 2026 Grimme Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -92,8 +92,8 @@ class SpinPolarizationCache(InteractionCache):
         dtype: torch.dtype | None = None,
     ) -> None:
         super().__init__(
-            device=wll.device if device is None else device,
-            dtype=wll.dtype if dtype is None else dtype,
+            device=device if device is None else wll.device,
+            dtype=dtype if dtype is None else wll.dtype,
         )
         self.wll = wll
         self.__store = None
@@ -118,7 +118,7 @@ class SpinPolarizationCache(InteractionCache):
 
     def restore(self) -> None:
         if self.__store is None:
-            raise RuntimeError("Cache cannot be restored; store is empty.")
+            raise RuntimeError("Nothing to restore. Store is empty.")
 
         self.wll = self.__store.wll
 
@@ -155,8 +155,8 @@ class SpinPolarization(Interaction):
         dtype: torch.dtype | None = None,
     ) -> None:
         super().__init__(
-            device=spin_constants.device if device is None else device,
-            dtype=spin_constants.dtype if dtype is None else dtype,
+            device=device if device is None else spin_constants.device,
+            dtype=dtype if dtype is None else spin_constants.dtype,
         )
         self.spin_constants = spin_constants.to(**self.dd)
         self.wscale = torch.as_tensor(wscale, **self.dd)
