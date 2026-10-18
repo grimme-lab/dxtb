@@ -28,9 +28,8 @@ Decorators for the Calculator class. These decorators can mark:
 
 from __future__ import annotations
 
-import weakref
-
 import logging
+import weakref
 from functools import wraps
 from typing import TYPE_CHECKING, cast
 

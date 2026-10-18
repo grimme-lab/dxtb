@@ -34,7 +34,10 @@ from ...conftest import DEVICE
 # GFN2's multipole integrals need libcint
 methods = [(GFN1_XTB, labels.INTDRIVER_PYTORCH)]
 if has_libcint is True:
-    methods += [(GFN1_XTB, labels.INTDRIVER_LIBCINT), (GFN2_XTB, labels.INTDRIVER_LIBCINT)]
+    methods += [
+        (GFN1_XTB, labels.INTDRIVER_LIBCINT),
+        (GFN2_XTB, labels.INTDRIVER_LIBCINT),
+    ]
 
 
 def _setup(dd: DD, intdriver: int) -> tuple[Tensor, Tensor, dict]:
