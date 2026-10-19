@@ -172,7 +172,6 @@ class SelfConsistentFieldFull(BaseTSCF):
         nat = self._data.ihelp.nat
         container_target = self.config.scp_mode != labels.SCP_MODE_FOCK
         nprop = q.shape[1] if container_target else 0
-        q_extent = q.shape[-1]
 
         def matrix_index(index: Tensor, size: int) -> tuple[Any, ...]:
             return (index, ..., slice(0, size), slice(0, size))
