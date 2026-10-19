@@ -23,9 +23,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import GFN1_XTB, IndexHelper
+from dxtb import GFN1_XTB, IndexHelper, labels
 from dxtb import integrals as ints
-from dxtb import labels
 from dxtb._src.constants.labels import INTDRIVER_LIBCINT, INTDRIVER_PYTORCH
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.integral.driver import libcint, pytorch

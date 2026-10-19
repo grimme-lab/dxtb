@@ -27,9 +27,8 @@ import torch
 from tad_mctc.convert import any_to_tensor
 from tad_mctc.math import einsum
 
-from dxtb import OutputHandler
+from dxtb import OutputHandler, labels
 from dxtb import integrals as ints
-from dxtb import labels
 from dxtb._src import ncoord, scf
 from dxtb._src.components.interactions.container import Charges, Potential
 from dxtb._src.components.interactions.field import efield as efield

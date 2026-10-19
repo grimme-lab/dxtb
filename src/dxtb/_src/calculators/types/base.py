@@ -31,9 +31,8 @@ from abc import abstractmethod
 import torch
 from tad_mctc.exceptions import DeviceError, DtypeError
 
-from dxtb import IndexHelper, OutputHandler
+from dxtb import IndexHelper, OutputHandler, labels
 from dxtb import integrals as ints
-from dxtb import labels
 from dxtb._src.calculators.properties.vibration import (
     IRResult,
     RamanResult,
