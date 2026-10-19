@@ -41,6 +41,9 @@ def test_defaults() -> None:
 
     # assert isinstance(args.spin, int)
     assert args.spin == defaults.SPIN
+    assert args.uhf_mode is False
+    assert args.spin_polarized is False
+    assert args.spin_polarization_scale == 1.0
 
     assert isinstance(args.verbosity, int)
     assert args.verbosity == defaults.VERBOSITY
@@ -230,3 +233,21 @@ def test_fail_value():
     with redirect_stdout(f):
         with pytest.raises(SystemExit):
             p.parse_args(["--help"])
+
+
+def test_spin() -> None:
+    args = parser().parse_args(["--unrestricted"])
+    assert args.uhf_mode is True
+    assert args.spin_polarized is False
+
+    args = parser().parse_args(["--spin-polarized"])
+    assert args.spin_polarized is True
+    assert args.uhf_mode is False
+
+    args = parser().parse_args("--spin-polarization-scale 0.25".split())
+    assert pytest.approx(0.25) == args.spin_polarization_scale
+
+    # `--uhf` is an alias for the number of unpaired electrons
+    args = parser().parse_args(["--uhf", "2"])
+    assert args.spin == 2
+    assert args.uhf_mode is False

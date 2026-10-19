@@ -56,6 +56,7 @@ from dxtb._src.components.interactions.field import efield
 from dxtb._src.components.interactions.field import efieldgrad as efield_grad
 from dxtb._src.constants import defaults
 from dxtb._src.param import Param, ParamModule
+from dxtb._src.scf.utils import resolve_nspin
 from dxtb._src.timing import timer
 from dxtb._src.typing import Any, Self, Tensor, TensorLike, override
 from dxtb.config import Config
@@ -449,6 +450,12 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
     Number of calculations performed with the calculator. Helpful for keeping
     track of cache hits and actual new calculations.
     """
+
+    @property
+    def nspin(self) -> int:
+        """Resolved number of wavefunction channels for the next calculation."""
+        requested = 2 if self.opts.scf.uhf_mode else 1
+        return resolve_nspin(self.interactions, requested)
 
     def __init__(
         self,

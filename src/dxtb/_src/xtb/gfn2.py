@@ -164,5 +164,7 @@ class GFN2Hamiltonian(BaseHamiltonian):
         wmat: Tensor,
         pot: Potential,
         cn: Tensor,
+        pmat_magnet: Tensor | None = None,
+        pot_magnet: Potential | None = None,
     ) -> tuple[Tensor, Tensor]:
         raise NotImplementedError("GFN2 not implemented yet.")
