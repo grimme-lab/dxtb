@@ -29,6 +29,7 @@ Decorators for the Calculator class. These decorators can mark:
 from __future__ import annotations
 
 import logging
+import weakref
 from functools import wraps
 from typing import TYPE_CHECKING, cast
 
@@ -76,6 +77,16 @@ def requires_positions_grad(
             raise RuntimeError(
                 f"Position tensor needs ``requires_grad=True`` in '{func.__name__}'."
             )
+
+        # The component caches are validated by position values only. A new
+        # positions tensor (even with equal values) needs its own graph, so the
+        # caches built for another tensor, or without a graph, must not be used.
+        last = getattr(self, "_grad_positions_ref", None)
+        if last is None or last() is not positions:
+            self.classicals.reset_all()
+            self.interactions.reset_all()
+            self.integrals.reset_all()
+            self._grad_positions_ref = weakref.ref(positions)
 
         return func(self, positions, chrg, spin, *args, **kwargs)
 
