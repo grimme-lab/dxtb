@@ -343,53 +343,38 @@ class Anderson(Mixer):
         ):
             raise RuntimeError("Mixer has not been started yet.")
 
-        if slicers == (...,):
-            shape = self._shape_out[1:]
-        else:
-            # NOTE: Maybe refactor the whole slicer approach...
-            if isinstance(slicers[0], type(...)):
-                tmp = slicers[0]
-            elif isinstance(slicers[0], slice):
-                tmp = slicers[0].stop
-                if isinstance(tmp, Tensor):
-                    tmp = t2int(tmp)
-            else:
-                raise RuntimeError("Unknown slicer given.")
-
-            shape = [mpdim, tmp]
-
-        # Length of flattened arrays after factoring in the new
-        l = t2int(torch.prod(torch.tensor(shape, device=self._x_hist.device)))
-
-        # Invert the cull_list, gather & reassign self._delta self._x_hist &
-        # self._f so only those marked False remain.
         notconv = ~conv
+        old_shape = self._shape_out[1:]
+        if slicers == (...,):
+            selectors = tuple(slice(0, size) for size in old_shape)
+        elif len(slicers) == 1:
+            selectors = (slice(0, mpdim), slicers[0])
+        else:
+            selectors = tuple(slicers)
+
+        shape: list[int] = []
+        for old, selector in zip(old_shape, selectors):
+            if not isinstance(selector, slice):
+                raise RuntimeError("Mixer culling requires slice selectors.")
+            stop = old if selector.stop is None else selector.stop
+            shape.append(t2int(stop) if isinstance(stop, Tensor) else int(stop))
+
+        length = 1
+        for size in shape:
+            length *= size
 
         def _cull(tensor: Tensor) -> Tensor:
-            # Perform culling on flattened tensor
-            culled = tensor[..., notconv, :]
-            shp = culled.shape[:-1]
-
-            # Reshape tensor (unflatten)
-            assert self._shape_out is not None
-            reshaped = culled.view(*shp, *self._shape_out[1:])
-
-            # Select elements and reshape back to flattened view
-            return (
-                reshaped[..., :mpdim, : (l // mpdim)]
-                .contiguous()
-                .view(*shp, -1)
-            )
+            reshaped = tensor.view(*tensor.shape[:-1], *old_shape)
+            culled = reshaped[(..., notconv, *selectors)]
+            return culled.contiguous().view(*culled.shape[: -len(shape)], -1)
 
         self._f = _cull(self._f)
         self._delta = _cull(self._delta)
         self._x_hist = _cull(self._x_hist)
 
         # Adjust the the shapes accordingly
-        self._shape_in[0] -= list(conv).count(
-            torch.tensor(True, device=self._x_hist.device)
-        )
-        self._shape_in[-1] = l
+        self._shape_in[0] = int(notconv.count_nonzero())
+        self._shape_in[-1] = length
         self._shape_out = [self._shape_in[0], *shape]
 
     def reset(self):

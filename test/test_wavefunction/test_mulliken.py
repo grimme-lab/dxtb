@@ -277,3 +277,26 @@ def test_batch_charges_shell(dtype: torch.dtype, name1: str, name2: str):
 
     pop = mulliken.get_mulliken_shell_charges(overlap, density, ihelp, n0)
     assert pytest.approx(ref.cpu(), abs=tol) == pop.cpu()
+
+
+@pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])
+def test_orbital_charges_uhf(dtype: torch.dtype) -> None:
+    """Alpha/beta populations are collected to charge/magnetization."""
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    overlap = torch.eye(3, **dd)
+    density = torch.diag_embed(
+        torch.tensor([[0.8, 0.2, 0.0], [0.3, 0.1, 0.0]], **dd)
+    )
+    n0 = torch.tensor([1.0, 1.0, 0.0], **dd)
+
+    q = mulliken.get_mulliken_orbital_charges(overlap, density, n0, nspin=2)
+
+    # total: n0 - p_alpha - p_beta; magnetization: p_beta - p_alpha
+    ref = torch.tensor([[-0.1, 0.7, 0.0], [-0.5, -0.1, 0.0]], **dd)
+    tol = 1e-3 if dtype == torch.float16 else 1e-6
+    assert pytest.approx(ref.cpu(), abs=tol) == q.cpu()
+
+    # restricted
+    q = mulliken.get_mulliken_orbital_charges(overlap, density.sum(-3), n0)
+    assert pytest.approx(ref[0].cpu(), abs=tol) == q.cpu()

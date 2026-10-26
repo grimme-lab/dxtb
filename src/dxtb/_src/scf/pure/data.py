@@ -17,7 +17,7 @@ import torch
 
 from dxtb import IndexHelper
 from dxtb._src.components.interactions import InteractionListCache
-from dxtb._src.components.interactions.container import ContainerData
+from dxtb._src.components.interactions.container import ContainerLayout
 from dxtb._src.integral.container import IntegralMatrices
 from dxtb._src.typing import Slicers, Tensor
 
@@ -67,6 +67,7 @@ class _Data:
         cache: InteractionListCache,
         integrals: IntegralMatrices,
         nel: Tensor | None = None,
+        nspin: int = 1,
     ) -> None:
         """
         Initialize the _Data object.
@@ -103,20 +104,11 @@ class _Data:
         self.numbers = numbers
         self.ihelp = ihelp
         self.cache = cache
+        self.nspin = nspin
         self.init_zeros()
 
-        self.potential: ContainerData = {
-            "mono": None,
-            "dipole": None,
-            "quad": None,
-            "label": None,
-        }
-        self.charges: ContainerData = {
-            "mono": None,
-            "dipole": None,
-            "quad": None,
-            "label": None,
-        }
+        self.potential = ContainerLayout(nspin=nspin)
+        self.charges = ContainerLayout(nspin=nspin)
 
         self.iter = -1  # bumped before printing, guess energy also printed
 
@@ -126,12 +118,23 @@ class _Data:
         old_charges, old_energy, and old_density attributes with zeros.
         """
         self.energy = torch.zeros_like(self.n0)
-        self.hamiltonian = torch.zeros_like(self.ints.hcore)
-        self.density = torch.zeros_like(self.ints.hcore)
-        self.evals = torch.zeros_like(self.n0)
-        self.evecs = torch.zeros_like(self.ints.hcore)
 
-        self.old_charges = torch.zeros_like(self.energy)
+        hamiltonian = torch.zeros_like(self.ints.hcore)
+        evals = torch.zeros_like(self.n0)
+        if self.nspin == 2:
+            hamiltonian = torch.stack((hamiltonian, hamiltonian), dim=-3)
+            evals = torch.stack((evals, evals), dim=-2)
+
+        self.hamiltonian = hamiltonian
+        self.density = torch.zeros_like(hamiltonian)
+        self.evals = evals
+        self.evecs = torch.zeros_like(hamiltonian)
+
+        self.old_charges = (
+            torch.zeros_like(self.energy)
+            if self.nspin == 1
+            else torch.zeros_like(self.evals)
+        )
         self.old_energy = torch.zeros_like(self.numbers)
         self.old_density = torch.zeros_like(self.density)
 
@@ -154,6 +157,7 @@ class _Data:
             Slicer objects for selecting data from tensors.
         """
         onedim = tuple([~conv, *slicers["orbital"]])
+        spin_onedim = tuple([~conv, (...), *slicers["orbital"]])
         onedim_atom = tuple([~conv, *slicers["atom"]])
         twodim = tuple([~conv, *slicers["orbital"], *slicers["orbital"]])
         threedim = tuple(
@@ -171,17 +175,17 @@ class _Data:
         self.ints.run_checks = True
 
         self.numbers = self.numbers[onedim_atom]
-        self.hamiltonian = self.hamiltonian[twodim]
-        self.density = self.density[twodim]
-        self.occupation = self.occupation[twodim]
+        self.hamiltonian = self.hamiltonian[threedim]
+        self.density = self.density[threedim]
+        self.occupation = self.occupation[spin_onedim]
         self.nel = self.nel[~conv]
-        self.evecs = self.evecs[twodim]
-        self.evals = self.evals[onedim]
+        self.evecs = self.evecs[threedim]
+        self.evals = self.evals[spin_onedim]
         self.energy = self.energy[onedim]
         self.n0 = self.n0[onedim]
         self.ihelp.cull(conv, slicers=slicers)
         self.cache.cull(conv, slicers=slicers)
 
-        self.old_charges = self.old_charges[onedim]
+        self.old_charges = self.old_charges[spin_onedim]
         self.old_energy = self.old_energy[onedim_atom]
-        self.old_density = self.old_density[twodim]
+        self.old_density = self.old_density[threedim]

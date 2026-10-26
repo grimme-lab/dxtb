@@ -112,3 +112,18 @@ def test_fail() -> None:
 
     if status is True:
         timer.enable()
+
+
+@pytest.mark.parametrize("option", ["--unrestricted", "--spin-polarized"])
+def test_spin(option: str) -> None:
+    args = parser().parse_args(
+        [str(coordfile), "--verbosity", "0", "--spin", "2", option]
+    )
+    result = Driver(args).singlepoint()
+
+    assert result.nspin == 2
+    assert result.density.shape[-3] == 2
+
+    # total charge and number of unpaired electrons
+    ref = torch.tensor([0.0, -2.0], dtype=result.total.dtype)
+    assert pytest.approx(ref, abs=1e-8) == result.charges.mono.sum(-1)

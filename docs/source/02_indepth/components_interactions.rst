@@ -18,3 +18,4 @@ Below, you can find the detailed documentation.
    Coulomb <../_autosummary/dxtb.components.coulomb>
    Fields <../_autosummary/dxtb.components.field>
    Solvation <../_autosummary/dxtb.components.solvation>
+   Spin polarization <../_autosummary/dxtb.components.spin>

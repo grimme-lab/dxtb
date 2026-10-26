@@ -28,12 +28,18 @@ continued until all systems are converged.
 
 from __future__ import annotations
 
+from math import prod
+
 import torch
 
 from dxtb import OutputHandler
-from dxtb._src.components.interactions import Charges, Potential
+from dxtb._src.components.interactions import (
+    Charges,
+    ContainerLayout,
+    Potential,
+)
 from dxtb._src.constants import defaults, labels
-from dxtb._src.typing import Literal, Slicers, Tensor, exceptions, overload
+from dxtb._src.typing import Any, Literal, Slicers, Tensor, exceptions, overload
 from dxtb._src.utils import t2int
 
 from .base import BaseTSCF
@@ -141,14 +147,10 @@ class SelfConsistentFieldFull(BaseTSCF):
 
         # batched SCF with culling
         culled = True
-
-        # Initialize variables that change throughout the SCF. Later, we
-        # fill these with the converged values and simultaneously cull
-        # them from `self._data`
         ch = torch.zeros_like(self._data.hamiltonian)
         cevals = torch.zeros_like(self._data.evals)
         cevecs = torch.zeros_like(self._data.evecs)
-        ce = torch.zeros_like(self._data.evals)
+        ce = torch.zeros_like(self._data.energy)
         co = torch.zeros_like(self._data.occupation)
         cd = torch.zeros_like(self._data.density)
         n0 = self._data.n0
@@ -156,8 +158,6 @@ class SelfConsistentFieldFull(BaseTSCF):
         numbers = self._data.numbers
         charges_data = self._data.charges.copy()
         potential_data = self._data.potential.copy()
-
-        # shape: (nb, <number of moments>, norb)
         q_converged = torch.full_like(guess, defaults.PADNZ, device=self.device)
 
         overlap = self._data.ints.overlap
@@ -165,163 +165,135 @@ class SelfConsistentFieldFull(BaseTSCF):
         dipole = self._data.ints.dipole
         quad = self._data.ints.quadrupole
 
-        # indices for systems in batch, required for culling
         idxs = torch.arange(guess.size(0), device=self.device)
-
-        # tracker for converged systems
         converged = torch.full(idxs.shape, False, device=self.device)
-
-        # maximum number of orbitals in batch
-        norb = self._data.ihelp.nao
-        _norb = self._data.ihelp.nao
+        wave_norb = self._data.ihelp.nao
         nsh = self._data.ihelp.nsh
         nat = self._data.ihelp.nat
+        container_target = self.config.scp_mode != labels.SCP_MODE_FOCK
+        nprop = q.shape[1] if container_target else 0
 
-        # Here, we account for cases, in which the number of
-        # orbitals is smaller than the number of atoms times 3 (6)
-        # after culling. We specifically avoid culling, as this
-        # would severly mess up the shapes involved.
-        if q.shape[1] == 2:
-            norb = max(norb, nat * defaults.DP_SHAPE)
-        elif q.shape[1] == 3:
-            norb = max(norb, nat * defaults.QP_SHAPE)
+        def matrix_index(index: Tensor, size: int) -> tuple[Any, ...]:
+            return (index, ..., slice(0, size), slice(0, size))
 
-        # We need to specify the number of multipole dimensions for the
-        # culling to work properly later. If we are converging the Fock
-        # matrix, there is no such thing as multipole dimensions. However,
-        # we will shamelessly use this as the second dimension of the Fock
-        # matrix even modify it for the culling process.
-        mpdim = q.shape[1]
+        def vector_index(index: Tensor, size: int) -> tuple[Any, ...]:
+            return (index, ..., slice(0, size))
 
-        # initialize slicers for culling
-        slicers: Slicers = {
-            "orbital": (...,),
-            "shell": (...,),
-            "atom": (...,),
-        }
+        def update_layout(
+            layout: ContainerLayout, batch: int, norb: int, natom: int
+        ) -> None:
+            spin_shape = (layout.nspin,) if layout.nspin == 2 else ()
+            if layout.mono is not None:
+                layout.mono = torch.Size((batch, *spin_shape, norb))
+            if layout.dipole is not None:
+                layout.dipole = torch.Size(
+                    (batch, *spin_shape, natom, defaults.DP_SHAPE)
+                )
+            if layout.quad is not None:
+                layout.quad = torch.Size(
+                    (batch, *spin_shape, natom, defaults.QP_SHAPE)
+                )
+
+        def layout_extent(layout: ContainerLayout) -> int:
+            return max(prod(shape[1:]) for shape in layout.component_shapes)
 
         for _ in range(maxiter):
             q_new = fcn(q)
 
-            # Important: Calculate energy with charges before mixing!
             if OutputHandler.verbosity >= 3:  # pragma: no cover
                 charges = self.converged_to_charges(q_new)
                 energy = self.get_energy(charges)
                 self._print(charges, energy)
 
             q = self.mixer.iter(q_new, q)
-
             conv = self.mixer.converged
-            if conv.any():
-                # Simultaneous convergence does not require culling.
-                # Occurs if batch size equals amount of True in `conv`.
-                if guess.shape[0] == conv.count_nonzero():
-                    q_converged = q_new
-                    converged[:] = True
-                    culled = False
-                    break
+            if not conv.any():
+                continue
 
-                # save all necessary variables for converged system
-                iconv = idxs[conv]
-                q_converged[iconv, :mpdim, :norb] = q_new[conv, ..., :]
-                ch[iconv, :norb, :norb] = self._data.hamiltonian[conv, :, :]
-                cevecs[iconv, :norb, :norb] = self._data.evecs[conv, :, :]
-                cevals[iconv, :norb] = self._data.evals[conv, :]
-                ce[iconv, :norb] = self._data.energy[conv, :]
-                co[iconv, :norb, :norb] = self._data.occupation[conv, :, :]
-                cd[iconv, :norb, :norb] = self._data.density[conv, :, :]
+            # If the original batch converges simultaneously, no state was
+            # culled and the current tensors are already complete.
+            if conv.all() and idxs.numel() == guess.shape[0]:
+                q_converged = q_new
+                converged[:] = True
+                culled = False
+                break
 
-                # update convergence tracker
-                converged[iconv] = True
+            iconv = idxs[conv]
+            if container_target:
+                # Rows are orbital-/atom-major (see `Container.as_tensor`),
+                # hence the converged prefix can be stored directly.
+                q_converged[iconv, :nprop, : q_new.shape[-1]] = q_new[conv]
+            else:
+                q_converged[matrix_index(iconv, wave_norb)] = q_new[
+                    matrix_index(conv, wave_norb)
+                ]
 
-                # end SCF if all systems are converged
-                if conv.all():
-                    break
+            mat_out = matrix_index(iconv, wave_norb)
+            mat_in = matrix_index(conv, wave_norb)
+            vec_out = vector_index(iconv, wave_norb)
+            vec_in = vector_index(conv, wave_norb)
+            ch[mat_out] = self._data.hamiltonian[mat_in]
+            cevecs[mat_out] = self._data.evecs[mat_in]
+            cevals[vec_out] = self._data.evals[vec_in]
+            ce[iconv, :wave_norb] = self._data.energy[conv, :wave_norb]
+            co[vec_out] = self._data.occupation[vec_in]
+            cd[mat_out] = self._data.density[mat_in]
+            converged[iconv] = True
 
-                # cull `orbitals_per_shell` (`shells_per_atom`) to
-                # calculate maximum number of orbitals (shells), which
-                # corresponds to the maximum padding
-                norb_new = (
-                    self._data.ihelp.orbitals_per_shell[~conv, ...]
-                    .sum(-1)
-                    .max()
+            if conv.all():
+                break
+
+            wave_norb_new = t2int(
+                self._data.ihelp.orbitals_per_shell[~conv, ...].sum(-1).max()
+            )
+            nsh_new = t2int(
+                self._data.ihelp.shells_per_atom[~conv, ...].sum(-1).max()
+            )
+            nat_new = t2int(
+                self._data.numbers[~conv, ...].count_nonzero(dim=-1).max()
+            )
+
+            slicers: Slicers = {
+                "orbital": (...,),
+                "shell": (...,),
+                "atom": (...,),
+            }
+            if wave_norb_new < wave_norb:
+                slicers["orbital"] = [slice(0, wave_norb_new)]
+            if nsh_new < nsh:
+                slicers["shell"] = [slice(0, nsh_new)]
+            if nat_new < nat:
+                slicers["atom"] = [slice(0, nat_new)]
+
+            self._data.cull(conv, slicers=slicers)
+            idxs = idxs[~conv]
+            wave_norb, nsh, nat = wave_norb_new, nsh_new, nat_new
+            update_layout(self._data.charges, len(idxs), wave_norb, nat)
+            update_layout(self._data.potential, len(idxs), wave_norb, nat)
+
+            if container_target:
+                layout = (
+                    self._data.charges
+                    if self.config.scp_mode == labels.SCP_MODE_CHARGE
+                    else self._data.potential
                 )
-                _norb_new = norb_new
-                nsh_new = (
-                    self._data.ihelp.shells_per_atom[~conv, ...].sum(-1).max()
-                )
-                nat_new = (
-                    self._data.numbers[~conv, ...].count_nonzero(dim=-1).max()
-                )
+                q_extent = layout_extent(layout)
+                q = q[~conv, :nprop, :q_extent]
+                q_new = q_new[~conv, :nprop, :q_extent]
+                mixer_slices = [slice(0, nprop), slice(0, q_extent)]
+            else:
+                qindex = matrix_index(~conv, wave_norb)
+                q = q[qindex]
+                q_new = q_new[qindex]
+                spin_slices = [slice(0, 2)] if self.nspin == 2 else []
+                mixer_slices = [
+                    *spin_slices,
+                    slice(0, wave_norb),
+                    slice(0, wave_norb),
+                ]
 
-                # Here, we account for cases, in which the number of
-                # orbitals is smaller than the number of atoms times 3 (6)
-                # after culling. We specifically avoid culling, as this
-                # would severly mess up the shapes involved.
-                if q.shape[1] == 2:
-                    norb_new = max(
-                        t2int(norb_new), t2int(nat_new) * defaults.DP_SHAPE
-                    )
-                elif q.shape[1] == 3:
-                    norb_new = max(
-                        t2int(norb_new), t2int(nat_new) * defaults.QP_SHAPE
-                    )
+            self.mixer.cull(conv, slicers=mixer_slices)
 
-                # If the largest system was culled from batch, cut the
-                # properties down to the new size to remove superfluous
-                # padding values
-                if norb > norb_new:
-                    slicers["orbital"] = [slice(0, i) for i in [norb_new]]
-                    norb = norb_new
-                    _norb = _norb_new
-                    if self.config.scp_mode == labels.SCP_MODE_FOCK:
-                        mpdim = norb
-                if nsh > nsh_new:
-                    slicers["shell"] = [slice(0, i) for i in [nsh_new]]
-                    nsh = nsh_new
-                if nat > nat_new:
-                    slicers["atom"] = [slice(0, i) for i in [nat_new]]
-                    nat = nat_new
-
-                # cull SCF variables
-                self._data.cull(conv, slicers=slicers)
-
-                # cull local variables
-                q = q[~conv, :mpdim, :norb]
-                q_new = q_new[~conv, :mpdim, :norb]
-                idxs = idxs[~conv]
-
-                if self._data.charges["mono"] is not None:
-                    self._data.charges["mono"] = torch.Size(
-                        (len(idxs), int(_norb))
-                    )
-                if self._data.charges["dipole"] is not None:
-                    self._data.charges["dipole"] = torch.Size(
-                        (len(idxs), int(nat), defaults.DP_SHAPE)
-                    )
-                if self._data.charges["quad"] is not None:
-                    self._data.charges["quad"] = torch.Size(
-                        (len(idxs), int(nat), defaults.QP_SHAPE)
-                    )
-                if self._data.potential["mono"] is not None:
-                    self._data.potential["mono"] = torch.Size(
-                        (len(idxs), int(_norb))
-                    )
-                if self._data.potential["dipole"] is not None:
-                    self._data.potential["dipole"] = torch.Size(
-                        (len(idxs), int(nat), defaults.DP_SHAPE)
-                    )
-                if self._data.potential["quad"] is not None:
-                    self._data.potential["quad"] = torch.Size(
-                        (len(idxs), int(nat), defaults.QP_SHAPE)
-                    )
-
-                # cull mixer (only contains orbital resolved properties)
-                self.mixer.cull(
-                    conv, slicers=slicers["orbital"], mpdim=int(mpdim)
-                )
-
-        # handle unconverged case (`maxiter` iterations)
         else:
             msg = (
                 f"SCF does not converge after '{maxiter}' cycles using "
@@ -331,44 +303,43 @@ class SelfConsistentFieldFull(BaseTSCF):
             if self.config.force_convergence is True:
                 raise exceptions.SCFConvergenceError(msg)
 
-            # collect unconverged indices with convergence tracker; charges
-            # are already culled, and hence, require no further indexing
-            idxs = torch.arange(guess.size(0), device=self.device)
-            iconv = idxs[~converged]
-            q_converged[iconv, ..., :norb] = q_new
+            if container_target:
+                q_converged[idxs, :nprop, : q_new.shape[-1]] = q_new
+            else:
+                q_converged[matrix_index(idxs, wave_norb)] = q_new[
+                    matrix_index(
+                        torch.ones(
+                            len(idxs), dtype=torch.bool, device=self.device
+                        ),
+                        wave_norb,
+                    )
+                ]
 
-            # if nothing converged, skip culling
             if (~converged).all():
                 culled = False
 
-            # at least issue a helpful warning
+            all_idxs = torch.arange(guess.size(0), device=self.device)
             msg_converged = (
                 "\nForced convergence is turned off. The calculation will "
                 "continue with the current unconverged charges."
-                f"\nIn total, {len(iconv)} systems did not converge "
-                f"({iconv.tolist()}), and {len(idxs[converged])} converged "
-                f"({idxs[converged].tolist()})."
+                f"\nIn total, {len(idxs)} systems did not converge "
+                f"({idxs.tolist()}), and {int(converged.count_nonzero())} "
+                f"converged ({all_idxs[converged].tolist()})."
             )
             OutputHandler.warn(
                 msg + msg_converged, exceptions.SCFConvergenceWarning
             )
 
         if culled is True:
-            # write converged variables back to `self._data` for final
-            # energy evaluation; if we continue with unconverged properties,
-            # we first need to write the unconverged values from the
-            # `_data` object back to the converged variable before saving it
-            # for the final energy evaluation
             if not converged.all():
-                idxs = torch.arange(guess.size(0), device=self.device)
-                iconv = idxs[~converged]
-
-                cevals[iconv, :norb] = self._data.evals
-                cevecs[iconv, :norb, :norb] = self._data.evecs
-                ce[iconv, :norb] = self._data.energy
-                ch[iconv, :norb, :norb] = self._data.hamiltonian
-                co[iconv, :norb, :norb] = self._data.occupation
-                cd[iconv, :norb, :norb] = self._data.density
+                mat_out = matrix_index(idxs, wave_norb)
+                vec_out = vector_index(idxs, wave_norb)
+                ch[mat_out] = self._data.hamiltonian
+                cevecs[mat_out] = self._data.evecs
+                cevals[vec_out] = self._data.evals
+                ce[idxs, :wave_norb] = self._data.energy
+                co[vec_out] = self._data.occupation
+                cd[mat_out] = self._data.density
 
             self._data.evals = cevals
             self._data.evecs = cevecs
@@ -378,9 +349,6 @@ class SelfConsistentFieldFull(BaseTSCF):
             self._data.density = cd
             self._data.charges = charges_data
             self._data.potential = potential_data
-
-            # write culled variables (that did not change throughout the
-            # SCF) back to `self._data` for the final energy evaluation
             self._data.n0 = n0
             self._data.nel = nel
             self._data.numbers = numbers
@@ -393,8 +361,6 @@ class SelfConsistentFieldFull(BaseTSCF):
             if self._data.ints.quadrupole is not None and quad is not None:
                 self._data.ints.quadrupole = quad
             self._data.ints.run_checks = True
-
-            # reset IndexHelper and caches which were culled as well
             self._data.ihelp.restore()
             self._data.cache.restore()
 

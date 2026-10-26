@@ -16,13 +16,47 @@
 # limitations under the License.
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from tad_mctc.math import einsum
 
 from dxtb._src.typing import Tensor
 
 from ..timing.decorator import timer_decorator
 
-__all__ = ["get_density"]
+if TYPE_CHECKING:
+    from dxtb._src.components.interactions import InteractionList
+del TYPE_CHECKING
+
+__all__ = ["get_density", "resolve_nspin"]
+
+
+def resolve_nspin(interactions: InteractionList, requested: int = 1) -> int:
+    """
+    Resolve the number of spin channels of the SCF.
+
+    Unrestricted calculations (two channels) can be requested independently.
+    However, interactions that require two channels (e.g., spin polarization)
+    always enable the unrestricted mode.
+
+    Parameters
+    ----------
+    interactions : InteractionList
+        Interactions of the SCF.
+    requested : int, optional
+        Requested number of spin channels. Defaults to ``1``.
+
+    Returns
+    -------
+    int
+        Number of spin channels (1 or 2).
+    """
+    if requested not in (1, 2):
+        raise ValueError(
+            f"Only one or two spin channels are supported, got {requested}."
+        )
+    # dummy interactions (e.g., in tests) do not provide `requires_uhf`
+    return 2 if getattr(interactions, "requires_uhf", False) else requested
 
 
 @timer_decorator("Density", "SCF")

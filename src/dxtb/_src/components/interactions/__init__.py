@@ -21,9 +21,10 @@ Components: Interactions
 Definition of interactions in the extended tight-binding model.
 """
 
-from .base import Interaction
+from .base import ChargeChannel, Interaction, InteractionCache
 from .container import *
 from .coulomb import *
 from .field import *
 from .list import InteractionList, InteractionListCache
 from .solvation import *
+from .spin import *

@@ -109,6 +109,8 @@ class HamiltonianABC(ABC):
         wmat: Tensor,
         pot: Potential,
         cn: Tensor,
+        pmat_magnet: Tensor | None = None,
+        pot_magnet: Potential | None = None,
     ) -> tuple[Tensor, Tensor]:
         """
         Calculate gradient of the full Hamiltonian with respect ot atomic positions.

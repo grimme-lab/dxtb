@@ -48,10 +48,11 @@ class _MapData:
         self.n0 = data.n0
         self.occupation = data.occupation
         self.nel = data.nel
+        self.nspin = data.nspin
         self.ihelp = data.ihelp
         self.cache = data.cache
-        self.charges = dict(data.charges)
-        self.potential = dict(data.potential)
+        self.charges = data.charges.copy()
+        self.potential = data.potential.copy()
 
 
 class BaseXSCF(BaseSCF):
@@ -77,7 +78,13 @@ class BaseXSCF(BaseSCF):
             Overlap matrix.
         """
 
-        return ovlp_diag.get_overlap(self._data.ints.overlap)
+        smat = self._data.ints.overlap
+
+        # same overlap for alpha and beta channel
+        if self.nspin == 2:
+            smat = smat.unsqueeze(-3).expand(*smat.shape[:-2], 2, -1, -1)
+
+        return ovlp_diag.get_overlap(smat)
 
     def diagonalize(self, hamiltonian: Tensor) -> tuple[Tensor, Tensor]:
         """

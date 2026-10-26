@@ -31,7 +31,9 @@ from dxtb import Calculator
 from dxtb._src import io
 from dxtb._src.calculators.config import Config
 from dxtb._src.calculators.result import Result
+from dxtb._src.components.interactions import Interaction
 from dxtb._src.components.interactions.field import new_efield
+from dxtb._src.components.interactions.spin import new_spin_polarization
 from dxtb._src.constants import labels
 from dxtb._src.timing import timer
 from dxtb._src.typing import Tensor
@@ -181,6 +183,7 @@ class Driver:
         timer.stop("Read Files")
 
         chrg = torch.tensor(self.chrg, **dd)
+        spin = torch.tensor(self.spin, **dd)
 
         if args.grad is True:
             positions.requires_grad = True
@@ -198,7 +201,7 @@ class Driver:
             raise ValueError(f"Unknown method '{args.method}'.")
 
         # INTERACTIONS
-        interactions = []
+        interactions: list[Interaction] = []
 
         needs_field = any(
             [
@@ -226,6 +229,12 @@ class Driver:
             )
             interactions.append(new_efield(field, **dd))
 
+        if args.spin_polarized is True:
+            wscale = args.spin_polarization_scale
+            interactions.append(
+                new_spin_polarization(numbers, wscale=wscale, **dd)
+            )
+
         # setup calculator
         calc = Calculator(
             numbers,
@@ -240,7 +249,7 @@ class Driver:
         ####################################################
         if args.grad:
             # run singlepoint calculation
-            result = calc.singlepoint(positions, chrg)
+            result = calc.singlepoint(positions, chrg, spin)
 
             timer.start("grad")
             (g,) = torch.autograd.grad(result.total.sum(), positions)
@@ -260,7 +269,7 @@ class Driver:
         if args.forces is True:
             positions.requires_grad_(True)
 
-            result = calc.forces(positions, chrg)
+            result = calc.forces(positions, chrg, spin)
             calc.reset()
 
             timer.print()
@@ -270,7 +279,7 @@ class Driver:
 
         if args.forces_numerical is True:
             timer.start("Forces")
-            result = calc.forces_numerical(positions, chrg)
+            result = calc.forces_numerical(positions, chrg, spin)
             timer.stop("Forces")
             calc.reset()
 
@@ -282,7 +291,7 @@ class Driver:
             positions.requires_grad_(True)
 
             timer.start("Hessian")
-            result = calc.hessian(positions, chrg)
+            result = calc.hessian(positions, chrg, spin)
             timer.stop("Hessian")
             calc.reset()
 
@@ -294,7 +303,7 @@ class Driver:
             positions.requires_grad_(True)
 
             timer.start("Hessian")
-            result = calc.hessian_numerical(positions, chrg)
+            result = calc.hessian_numerical(positions, chrg, spin)
             timer.stop("Hessian")
             calc.reset()
 
@@ -309,7 +318,7 @@ class Driver:
             calc.opts.scf.mixer = labels.MIXER_ANDERSON
 
             timer.start("IR")
-            ir_result = calc.ir(positions, chrg)
+            ir_result = calc.ir(positions, chrg, spin)
             ir_result.use_common_units()
             print("IR Frequencies\n", ir_result.freqs)
             print("IR Intensities\n", ir_result.ints)
@@ -318,7 +327,7 @@ class Driver:
 
         if args.ir_numerical is True:
             timer.start("IR")
-            ir_result = calc.ir_numerical(positions, chrg)
+            ir_result = calc.ir_numerical(positions, chrg, spin)
             ir_result.use_common_units()
             print("IR Frequencies\n", ir_result.freqs)
             print("IR Intensities\n", ir_result.ints)
@@ -332,7 +341,7 @@ class Driver:
 
             # TODO: Better print handling
             timer.start("Raman")
-            raman_result = calc.raman(positions, chrg)
+            raman_result = calc.raman(positions, chrg, spin)
             raman_result.use_common_units()
             print("Raman Frequencies\n", raman_result.freqs)
             print("Raman Intensities\n", raman_result.ints)
@@ -340,7 +349,7 @@ class Driver:
 
         if args.raman_numerical is True:
             timer.start("Raman Num")
-            raman_result = calc.raman_numerical(positions, chrg)
+            raman_result = calc.raman_numerical(positions, chrg, spin)
             raman_result.use_common_units()
             print("Raman Frequencies\n", raman_result.freqs)
             print("Raman Intensities\n", raman_result.ints)
@@ -351,20 +360,20 @@ class Driver:
             calc.opts.scf.mixer = labels.MIXER_ANDERSON
 
             timer.start("Dipole")
-            mu = calc.dipole_analytical(positions, chrg)
+            mu = calc.dipole_analytical(positions, chrg, spin)
             timer.stop("Dipole")
             print("Dipole Moment\n", mu)
 
         if args.polarizability is True:
             timer.start("Polarizability")
-            alpha = calc.polarizability(positions, chrg)
+            alpha = calc.polarizability(positions, chrg, spin)
             timer.stop("Polarizability")
             print("Polarizability\n", alpha)
 
         io.OutputHandler.dump_warnings()
 
         if "energy" not in calc.cache:
-            result = calc.singlepoint(positions, chrg)
+            result = calc.singlepoint(positions, chrg, spin)
 
             timer.print()
             result.print_energies()

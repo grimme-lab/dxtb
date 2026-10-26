@@ -243,10 +243,16 @@ class Mixer(ABC):
             l2_norm = torch.norm(self.delta, p=None)
             max_norm = torch.norm(self.delta, p=float("inf"))
         else:
+            # The rows of both channels of an unrestricted Fock matrix
+            # (shape: [batch, spin, i, j]) are stacked to obtain a matrix.
+            delta = self.delta
+            if delta.ndim > 3:
+                delta = delta.flatten(start_dim=1, end_dim=-2)
+
             # norm goes over all dims except first (batch dimension)
-            dims = tuple(range(-(self.delta.ndim - 1), 0))
-            l2_norm = torch.norm(self.delta, dim=dims)
-            max_norm = torch.norm(self.delta, p=float("inf"), dim=dims)
+            dims = tuple(range(-(delta.ndim - 1), 0))
+            l2_norm = torch.norm(delta, dim=dims)
+            max_norm = torch.norm(delta, p=float("inf"), dim=dims)
 
         converged_l2 = l2_norm < self.options["x_tol"]
         converged_max = max_norm < self.options["x_tol_max"]

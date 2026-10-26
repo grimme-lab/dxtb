@@ -82,7 +82,7 @@ def test_full_mixer_error() -> None:
         SelfConsistentFieldFull(ilist, *kwargs, config=config)
 
 
-def test_full_change_scp() -> None:
+def test_full_keeps_multipole_scp() -> None:
     ilist = InteractionList()
 
     dummy = torch.tensor([1], dtype=torch.float)
@@ -110,11 +110,8 @@ def test_full_change_scp() -> None:
 
     _ = SelfConsistentFieldFull(ilist, **kwargs, config=config)
 
-    assert len(OutputHandler.warnings) == 1
-
-    warn_msg, warn_type = OutputHandler.warnings[0]
-    assert "Changing to Fock matrix automatically." in warn_msg
-    assert warn_type is UserWarning
+    assert len(OutputHandler.warnings) == 0
+    assert config.scp_mode == labels.SCP_MODE_CHARGE
 
     OutputHandler.clear_warnings()
 

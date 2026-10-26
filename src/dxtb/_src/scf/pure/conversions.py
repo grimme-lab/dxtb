@@ -17,7 +17,7 @@ from dxtb._src.components.interactions.container import Charges, Potential
 from dxtb._src.constants import defaults, labels
 from dxtb._src.timing.decorator import timer_decorator
 from dxtb._src.typing import Callable, Tensor
-from dxtb._src.wavefunction import filling
+from dxtb._src.wavefunction import filling, mulliken, spin
 from dxtb.config import ConfigSCF
 
 from ..utils import get_density
@@ -125,12 +125,7 @@ def charges_to_potential(
     """
 
     potential = interactions.get_potential(data.cache, charges, data.ihelp)
-    data.potential = {
-        "mono": potential.mono_shape,
-        "dipole": potential.dipole_shape,
-        "quad": potential.quad_shape,
-        "label": potential.label,
-    }
+    data.potential = potential.layout
 
     return potential
 
@@ -217,15 +212,16 @@ def density_to_charges(density: Tensor, data: _Data, cfg: ConfigSCF) -> Charges:
         Orbital-resolved partial charges vector.
     """
 
-    # Calculate diagonal directly by using index "i" twice on left side.
-    # The slower but more readable approach would instead compute the full
-    # matrix with "...ik,...kj->...ij" and only extract the diagonal
-    # afterwards with `torch.diagonal(tensor, dim1=-2, dim2=-1)`.
-    data.energy = einsum("...ik,...ki->...i", density, data.ints.hcore)
+    density_total = density if data.nspin == 1 else density.sum(-3)
+    data.energy = einsum("...ik,...ki->...i", density_total, data.ints.hcore)
 
-    # monopolar charges
-    populations = einsum("...ik,...ki->...i", density, data.ints.overlap)
-    charges = Charges(mono=data.n0 - populations, batch_mode=cfg.batch_mode)
+    charges = Charges(
+        mono=mulliken.get_mulliken_orbital_charges(
+            data.ints.overlap, density, data.n0, nspin=data.nspin
+        ),
+        batch_mode=cfg.batch_mode,
+        nspin=data.nspin,
+    )
 
     # Atomic dipole moments (dipole charges)
     if data.ints.dipole is not None:
@@ -234,18 +230,38 @@ def density_to_charges(density: Tensor, data: _Data, cfg: ConfigSCF) -> Charges:
         # more than 2D tensors. Additionally, we move the multipole
         # dimension to the back, which is required for the reduction to
         # atom-resolution.
-        charges.dipole = data.ihelp.reduce_orbital_to_atom(
-            -einsum("...ik,...mki->...im", density, data.ints.dipole),
+        dipint = (
+            data.ints.dipole
+            if data.nspin == 1
+            else data.ints.dipole.unsqueeze(-4)
+        )
+        dipole = data.ihelp.reduce_orbital_to_atom(
+            -einsum("...ik,...mki->...im", density, dipint),
             extra=True,
             dim=-2,
+        )
+        charges.dipole = (
+            dipole
+            if data.nspin == 1
+            else spin.updown_to_charge_magnetization(dipole, dim=-3)
         )
 
     # Atomic quadrupole moments (quadrupole charges)
     if data.ints.quadrupole is not None:
-        charges.quad = data.ihelp.reduce_orbital_to_atom(
-            -einsum("...ik,...mki->...im", density, data.ints.quadrupole),
+        quadint = (
+            data.ints.quadrupole
+            if data.nspin == 1
+            else data.ints.quadrupole.unsqueeze(-4)
+        )
+        quad = data.ihelp.reduce_orbital_to_atom(
+            -einsum("...ik,...mki->...im", density, quadint),
             extra=True,
             dim=-2,
+        )
+        charges.quad = (
+            quad
+            if data.nspin == 1
+            else spin.updown_to_charge_magnetization(quad, dim=-3)
         )
 
     return charges
@@ -268,11 +284,6 @@ def potential_to_hamiltonian(potential: Potential, data: _Data) -> Tensor:
     Tensor
         Hamiltonian matrix.
     """
-    h1 = data.ints.hcore
-
-    if potential.mono is not None:
-        v = potential.mono.unsqueeze(-1) + potential.mono.unsqueeze(-2)
-        h1 = h1 - (0.5 * data.ints.overlap * v)
 
     def add_vmp_to_h1(h1: Tensor, mpint: Tensor, vmp: Tensor) -> Tensor:
         # spread potential to orbitals
@@ -284,17 +295,31 @@ def potential_to_hamiltonian(potential: Potential, data: _Data) -> Tensor:
         tmp = 0.5 * einsum("...kij,...jk->...ij", mpint, v)
         return h1 - (tmp + tmp.mT)
 
-    if potential.dipole is not None:
-        dpint = data.ints.dipole
-        if dpint is not None:
-            h1 = add_vmp_to_h1(h1, dpint, potential.dipole)
+    def build(h1: Tensor, channel: Potential) -> Tensor:
+        if channel.mono is not None:
+            v = channel.mono.unsqueeze(-1) + channel.mono.unsqueeze(-2)
+            h1 = h1 - (0.5 * data.ints.overlap * v)
 
-    if potential.quad is not None:
-        qpint = data.ints.quadrupole
-        if qpint is not None:
-            h1 = add_vmp_to_h1(h1, qpint, potential.quad)
+        if channel.dipole is not None:
+            dpint = data.ints.dipole
+            if dpint is not None:
+                h1 = add_vmp_to_h1(h1, dpint, channel.dipole)
 
-    return h1
+        if channel.quad is not None:
+            qpint = data.ints.quadrupole
+            if qpint is not None:
+                h1 = add_vmp_to_h1(h1, qpint, channel.quad)
+        return h1
+
+    if data.nspin == 1:
+        return build(data.ints.hcore, potential)
+
+    # H_alpha/beta = H_charge +/- H_magnetization
+    hcharge = build(data.ints.hcore, potential.select_channel(0))
+    hmagnet = build(
+        torch.zeros_like(data.ints.hcore), potential.select_channel(1)
+    )
+    return torch.stack((hcharge + hmagnet, hcharge - hmagnet), dim=-3)
 
 
 def hamiltonian_to_density(
@@ -337,8 +362,11 @@ def hamiltonian_to_density(
     # keeps the graph of the total charge
     nel = data.nel
 
-    # expand emo/mask to second dim (for alpha/beta electrons)
-    emo = data.evals.unsqueeze(-2).expand([*nel.shape, -1])
+    emo = (
+        data.evals.unsqueeze(-2).expand([*nel.shape, -1])
+        if data.nspin == 1
+        else data.evals
+    )
     mask = data.ihelp.spread_shell_to_orbital(data.ihelp.orbitals_per_shell)
     mask = mask.unsqueeze(-2).expand([*nel.shape, -1])
 
@@ -363,4 +391,5 @@ def hamiltonian_to_density(
                 f"({nel} -> {_nel})."
             )
 
-    return get_density(data.evecs, data.occupation.sum(-2))
+    occupation = data.occupation.sum(-2) if data.nspin == 1 else data.occupation
+    return get_density(data.evecs, occupation)

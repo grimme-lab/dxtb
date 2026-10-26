@@ -106,6 +106,7 @@ class Config:
         maxiter: int = defaults.MAXITER,
         mixer: str | int = defaults.MIXER,
         mix_guess: bool = defaults.MIX_GUESS,
+        uhf_mode: bool = defaults.UHF_MODE,
         damp: float = defaults.DAMP,
         damp_init: float = defaults.DAMP_INIT,
         damp_dynamic: bool = defaults.DAMP_DYNAMIC,
@@ -214,6 +215,7 @@ class Config:
             maxiter=maxiter,
             mixer=mixer,
             mix_guess=mix_guess,
+            uhf_mode=uhf_mode,
             damp=damp,
             damp_init=damp_init,
             damp_dynamic=damp_dynamic,
@@ -274,6 +276,7 @@ class Config:
             # SCF
             maxiter=args.maxiter,
             mixer=args.mixer,
+            uhf_mode=args.uhf_mode,
             damp=args.damp,
             guess=args.guess,
             scf_mode=args.scf_mode,

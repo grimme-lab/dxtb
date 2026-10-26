@@ -1011,3 +1011,24 @@ def test_padding_energy_is_ignored(pad: float):
     focc = filling.get_fermi_occupation(nab, emo, kt, mask=mask)
     assert torch.equal(focc, ref)
     assert (focc[..., -1] == 0.0).all()
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_fermi_uhf(dtype: torch.dtype) -> None:
+    """Separate orbital energies for alpha and beta with empty beta channel."""
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    nel = torch.tensor([1.0, 0.0], **dd)
+    emo = torch.tensor([[-1.0, -1.0, 1.0], [-0.5, 0.0, 0.5]], **dd)
+    kt = torch.tensor(300 * KELVIN2AU, **dd)
+
+    occ = filling.get_fermi_occupation(nel, emo, kt)
+
+    # half occupation of degenerate orbitals, no beta electrons
+    ref = torch.tensor([[0.5, 0.5, 0.0], [0.0, 0.0, 0.0]], **dd)
+    assert pytest.approx(ref.cpu(), abs=1e-6) == occ.cpu()
+
+
+def test_alpha_beta_fail() -> None:
+    with pytest.raises(ValueError):
+        filling.get_alpha_beta_occupation(torch.tensor(1.0), torch.tensor(-1.0))

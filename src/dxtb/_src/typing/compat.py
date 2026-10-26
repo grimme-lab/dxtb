@@ -68,4 +68,4 @@ Gather = Callable[[Tensor, int, Tensor], Tensor]
 Scatter = Callable[[Tensor, int, Tensor, str], Tensor]
 
 ScatterOrGather = Gather | Scatter
-Slicer = list[slice] | tuple[slice] | tuple[type(...)]
+Slicer: TypeAlias = list[slice] | tuple[slice, ...] | tuple[type(...)]
