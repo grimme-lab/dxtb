@@ -24,9 +24,8 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB, IndexHelper
+from dxtb import GFN1_XTB, IndexHelper, labels
 from dxtb import integrals as ints
-from dxtb import labels
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.integral.driver.libcint import IntDriverLibcint
 from dxtb._src.integral.driver.manager import DriverManager

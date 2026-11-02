@@ -27,9 +27,8 @@ import torch
 from tad_mctc.convert import numpy_to_tensor, tensor_to_numpy
 from tad_mctc.units import AA2AU
 
-from dxtb import GFN1_XTB
+from dxtb import GFN1_XTB, kill_timer
 from dxtb import Calculator as DxtbCalculator
-from dxtb import kill_timer
 
 try:
     from ase import Atoms
