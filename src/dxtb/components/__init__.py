@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from dxtb.components import repulsion as repulsion
     from dxtb.components import shortrangebond as shortrangebond
     from dxtb.components import solvation as solvation
+    from dxtb.components import spin as spin
 else:
     import dxtb._src.loader.lazy as _lazy
 
@@ -66,6 +67,7 @@ else:
             "coulomb",
             "field",
             "solvation",
+            "spin",
             #
             "dispersion",
             "halogen",

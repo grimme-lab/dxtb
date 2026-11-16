@@ -135,10 +135,12 @@ def test_complete_result_and_reference_energy(name: str) -> None:
         "energy",
         "fenergy",
         "hamiltonian",
+        "nspin",
         "occupation",
         "potential",
         "iterations",
     }
+    assert result["nspin"] == 1
     assert result["iterations"] == 0
     assert result["energy"].sum().item() == pytest.approx(
         sample["egfn0"].item(), abs=5.0e-7

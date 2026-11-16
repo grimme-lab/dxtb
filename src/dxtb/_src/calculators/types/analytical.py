@@ -191,7 +191,7 @@ class AnalyticalCalculator(EnergyCalculator):
         timer.start("hgrad", "Hamiltonian Gradient")
         wmat = scf.get_density(
             coefficients,
-            occupation.sum(-2),
+            occupation if charges.nspin == 2 else occupation.sum(-2),
             emo=mo_energies,
         )
 
@@ -202,6 +202,15 @@ class AnalyticalCalculator(EnergyCalculator):
 
         density = self.cache["density"]
         assert isinstance(density, Tensor)
+
+        density_magnet = None
+        potential_magnet = None
+        if charges.nspin == 2:
+            density_magnet = density.select(-3, 0) - density.select(-3, 1)
+            density = density.sum(-3)
+            wmat = wmat.sum(-3)
+            potential_magnet = potential.select_channel(1)
+            potential = potential.select_channel(0)
 
         assert self.integrals.hcore is not None
 
@@ -214,6 +223,8 @@ class AnalyticalCalculator(EnergyCalculator):
             wmat,
             potential,
             cn,
+            pmat_magnet=density_magnet,
+            pot_magnet=potential_magnet,
         )
 
         # CN gradient
@@ -474,6 +485,7 @@ class AnalyticalCalculator(EnergyCalculator):
         result.emo = scf_results["emo"]
         result.fenergy = scf_results["fenergy"]
         result.hamiltonian = scf_results["hamiltonian"]
+        result.nspin = scf_results["nspin"]
         result.occupation = scf_results["occupation"]
         result.potential = scf_results["potential"]
         result.scf += scf_results["energy"]
@@ -506,19 +518,36 @@ class AnalyticalCalculator(EnergyCalculator):
         timer.start("hgrad", "Hamiltonian Gradient")
         wmat = scf.get_density(
             result.coefficients,
-            result.occupation.sum(-2),
+            (
+                result.occupation
+                if result.charges.nspin == 2
+                else result.occupation.sum(-2)
+            ),
             emo=result.emo,
         )
+
+        density = result.density
+        potential = result.potential
+        density_magnet = None
+        potential_magnet = None
+        if result.charges.nspin == 2:
+            density_magnet = density.select(-3, 0) - density.select(-3, 1)
+            density = density.sum(-3)
+            wmat = wmat.sum(-3)
+            potential_magnet = potential.select_channel(1)
+            potential = potential.select_channel(0)
 
         cn = ncoord.cn_d3(self.numbers, positions)
         dedcn, dedr = self.integrals.hcore.get_gradient(
             positions,
             intmats.overlap,
             overlap_grad,
-            result.density,
+            density,
             wmat,
-            result.potential,
+            potential,
             cn,
+            pmat_magnet=density_magnet,
+            pot_magnet=potential_magnet,
         )
 
         # CN gradient
@@ -604,8 +633,14 @@ class AnalyticalCalculator(EnergyCalculator):
         # pylint: disable=import-outside-toplevel
         from ..properties.moments.dip import dipole
 
-        qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
-        dip = dipole(qat, positions, result.density, dipint.matrix)
+        charges = result.charges.select_channel(0)
+        density = (
+            result.density.sum(-3)
+            if result.charges.nspin == 2
+            else result.density
+        )
+        qat = self.ihelp.reduce_orbital_to_atom(charges.mono)
+        dip = dipole(qat, positions, density, dipint.matrix)
         return dip
 
     @cdec.cache

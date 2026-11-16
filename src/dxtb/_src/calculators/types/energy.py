@@ -112,7 +112,8 @@ class EnergyCalculator(BaseCalculator):
         OutputHandler.write_stdout("Singlepoint ", v=3)
 
         # get the hashed key for the cache from all arguments
-        hashed_key = ""
+        # (restricted and unrestricted results differ, e.g. in their shapes)
+        hashed_key = f"nspin{self.nspin}_"
         all_args = (positions, chrg, spin) + tuple(kwargs.values())
         for i, arg in enumerate(all_args):
             sep = "_" if i > 0 else ""
@@ -327,6 +328,7 @@ class EnergyCalculator(BaseCalculator):
         result.emo = scf_results["emo"]
         result.fenergy = scf_results["fenergy"]
         result.hamiltonian = scf_results["hamiltonian"]
+        result.nspin = scf_results["nspin"]
         result.occupation = scf_results["occupation"]
         result.potential = scf_results["potential"]
         result.scf = scf_results["energy"]
@@ -475,7 +477,9 @@ class EnergyCalculator(BaseCalculator):
         Returns
         -------
         Tensor
-            Bond order matrix.
+            Restricted bond orders have shape ``(..., nat, nat)``. UHF bond
+            orders have shape ``(..., 2, nat, nat)`` in
+            total/magnetization representation.
         """
         self.singlepoint(positions, chrg, spin, **kwargs)
 
@@ -511,7 +515,9 @@ class EnergyCalculator(BaseCalculator):
         # pylint: disable=import-outside-toplevel
         from dxtb._src.wavefunction.wiberg import get_bond_order
 
-        return get_bond_order(overlap.matrix, density, self.ihelp)
+        return get_bond_order(
+            overlap.matrix, density, self.ihelp, nspin=self.nspin
+        )
 
     def calculate(
         self,

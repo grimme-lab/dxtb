@@ -223,6 +223,11 @@ def get_alpha_beta_occupation(
                 f"number of electrons ({nel.shape})."
             )
 
+        if (uhf < 0).any():
+            raise ValueError(
+                f"Number of unpaired electrons ({uhf}) cannot be negative."
+            )
+
         if (uhf > torch.floor(nel + 0.5)).any():
             raise ValueError(
                 f"Number of unpaired electrons ({uhf}) larger than "

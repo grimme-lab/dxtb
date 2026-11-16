@@ -4,7 +4,7 @@ import torch
 
 from dxtb._src.exlibs import xitorch as xt
 from dxtb._src.timing.decorator import timer_decorator
-from dxtb._src.typing import Tensor
+from dxtb._src.typing import Any, Tensor
 
 __all__ = ["get_overlap", "diagonalize"]
 
@@ -34,7 +34,7 @@ def get_overlap(smat: Tensor) -> xt.LinearOperator:
 
 @timer_decorator("Diagonalize", "SCF")
 def diagonalize(
-    hamiltonian: Tensor, ovlp: Tensor, eigen_options: dict
+    hamiltonian: Tensor, ovlp: Tensor, eigen_options: dict[str, Any]
 ) -> tuple[Tensor, Tensor]:
     """
     Diagonalize the Hamiltonian.
@@ -55,6 +55,9 @@ def diagonalize(
     evecs : Tensor
         Eigenvectors of the Hamiltonian.
     """
+
+    if hamiltonian.ndim == ovlp.ndim + 1:
+        ovlp = ovlp.unsqueeze(-3).expand_as(hamiltonian)
 
     h_op = xt.LinearOperator.m(hamiltonian)
     o_op = get_overlap(ovlp)

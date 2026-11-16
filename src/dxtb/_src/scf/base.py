@@ -26,13 +26,12 @@ from typing import TYPE_CHECKING
 
 import torch
 from tad_mctc.batch import real_atoms
-from tad_mctc.math import einsum
 from tad_mctc.units import KELVIN2AU
 
 from dxtb import IndexHelper, OutputHandler
 from dxtb._src.components.interactions.container import (
     Charges,
-    ContainerData,
+    ContainerLayout,
     Potential,
 )
 from dxtb._src.constants import defaults, labels
@@ -50,6 +49,7 @@ from dxtb.config import ConfigSCF
 
 from .pure import conversions, iterations
 from .result import SCFResult
+from .utils import get_density, resolve_nspin
 
 if TYPE_CHECKING:
     from dxtb._src.components.interactions import (
@@ -137,6 +137,7 @@ class BaseSCF:
             cache: InteractionListCache,
             integrals: IntegralMatrices,
             nel: Tensor | None = None,
+            nspin: int = 1,
         ) -> None:
             if integrals.hcore is None:
                 raise ValueError("No core Hamiltonian provided.")
@@ -150,20 +151,11 @@ class BaseSCF:
             self.numbers = numbers
             self.ihelp = ihelp
             self.cache = cache
+            self.nspin = nspin
             self.init_zeros()
 
-            self.potential: ContainerData = {
-                "mono": None,
-                "dipole": None,
-                "quad": None,
-                "label": None,
-            }
-            self.charges: ContainerData = {
-                "mono": None,
-                "dipole": None,
-                "quad": None,
-                "label": None,
-            }
+            self.potential = ContainerLayout(nspin=nspin)
+            self.charges = ContainerLayout(nspin=nspin)
 
             # bumped in SCF function (start: 1), guess energy NOT printed (0)
             self.iter = 0
@@ -171,12 +163,23 @@ class BaseSCF:
         def init_zeros(self) -> None:
             """Initialize all tensors with zeros."""
             self.energy = torch.zeros_like(self.n0)
-            self.hamiltonian = torch.zeros_like(self.ints.hcore)
-            self.density = torch.zeros_like(self.ints.hcore)
-            self.evals = torch.zeros_like(self.n0)
-            self.evecs = torch.zeros_like(self.ints.hcore)
 
-            self.old_charges = torch.zeros_like(self.energy)
+            hamiltonian = torch.zeros_like(self.ints.hcore)
+            evals = torch.zeros_like(self.n0)
+            if self.nspin == 2:
+                hamiltonian = torch.stack((hamiltonian, hamiltonian), dim=-3)
+                evals = torch.stack((evals, evals), dim=-2)
+
+            self.hamiltonian = hamiltonian
+            self.density = torch.zeros_like(hamiltonian)
+            self.evals = evals
+            self.evecs = torch.zeros_like(hamiltonian)
+
+            self.old_charges = (
+                torch.zeros_like(self.energy)
+                if self.nspin == 1
+                else torch.zeros_like(self.evals)
+            )
             self.old_energy = torch.zeros_like(self.numbers)
             self.old_density = torch.zeros_like(self.density)
 
@@ -197,6 +200,7 @@ class BaseSCF:
                 Slicers for the tensors.
             """
             onedim = tuple([~conv, *slicers["orbital"]])
+            spin_onedim = tuple([~conv, (...), *slicers["orbital"]])
             onedim_atom = tuple([~conv, *slicers["atom"]])
             twodim = tuple([~conv, *slicers["orbital"], *slicers["orbital"]])
             threedim = tuple(
@@ -214,20 +218,20 @@ class BaseSCF:
             self.ints.run_checks = True
 
             self.numbers = self.numbers[onedim_atom]
-            self.hamiltonian = self.hamiltonian[twodim]
-            self.density = self.density[twodim]
-            self.occupation = self.occupation[twodim]
+            self.hamiltonian = self.hamiltonian[threedim]
+            self.density = self.density[threedim]
+            self.occupation = self.occupation[spin_onedim]
             self.nel = self.nel[~conv]
-            self.evecs = self.evecs[twodim]
-            self.evals = self.evals[onedim]
+            self.evecs = self.evecs[threedim]
+            self.evals = self.evals[spin_onedim]
             self.energy = self.energy[onedim]
             self.n0 = self.n0[onedim]
             self.ihelp.cull(conv, slicers=slicers)
             self.cache.cull(conv, slicers=slicers)
 
-            self.old_charges = self.old_charges[onedim]
+            self.old_charges = self.old_charges[spin_onedim]
             self.old_energy = self.old_energy[onedim_atom]
-            self.old_density = self.old_density[twodim]
+            self.old_density = self.old_density[threedim]
 
     _data: _Data
     """Persistent data"""
@@ -291,6 +295,7 @@ class BaseSCF:
             **kwargs.pop("eigen_options", {}),
         }
 
+        self._fcn: Callable[[Tensor], Tensor]
         # validate early; the iteration function is selected in `_fcn`
         if self.config.scp_mode not in (
             labels.SCP_MODE_CHARGE,
@@ -301,11 +306,13 @@ class BaseSCF:
                 f"Unknown convergence target (SCP mode) '{self.config.scp_mode}'."
             )
 
-        self._data = self._Data(*args, **kwargs)
+        self.interactions = interactions
+        self.nspin = resolve_nspin(interactions, kwargs.pop("nspin", 1))
+
+        data_kwargs = {**kwargs, "nspin": self.nspin}
+        self._data = self._Data(*args, **data_kwargs)
 
         self.kt = torch.tensor(self.config.fermi.etemp * KELVIN2AU, **self.dd)
-
-        self.interactions = interactions
 
     @overload
     @abstractmethod
@@ -394,24 +401,42 @@ class BaseSCF:
 
         # initialize zero charges (equivalent to SAD guess)
         if charges is None:
-            charges = torch.zeros_like(self._data.occupation)
+            charges = torch.zeros_like(self._data.n0)
 
         # initialize Charge container depending on given integrals
         if isinstance(charges, Tensor):
-            charges = Charges(mono=charges, batch_mode=self.config.batch_mode)
-            self._data.charges["mono"] = charges.mono_shape
+            # guess for total charges; start without magnetization
+            if self.nspin == 2:
+                charges = torch.stack(
+                    (charges, torch.zeros_like(charges)), dim=-2
+                )
+            charges = Charges(
+                mono=charges,
+                batch_mode=self.config.batch_mode,
+                nspin=self.nspin,
+            )
 
-            if self._data.ints.dipole is not None:
-                shp = (*self._data.numbers.shape, defaults.DP_SHAPE)
-                zeros = torch.zeros(shp, **self.dd)
-                charges.dipole = zeros
-                self._data.charges["dipole"] = charges.dipole_shape
+        # restricted guess: start without magnetization
+        elif charges.nspin != self.nspin:
+            charges = charges.to_spin_channels(0)
 
-            if self._data.ints.quadrupole is not None:
-                shp = (*self._data.numbers.shape, defaults.QP_SHAPE)
-                zeros = torch.zeros(shp, **self.dd)
-                charges.quad = zeros
-                self._data.charges["quad"] = charges.quad_shape
+        spin_shape = (self.nspin,) if self.nspin == 2 else ()
+        atom_shape = (
+            *self._data.numbers.shape[:-1],
+            *spin_shape,
+            self._data.numbers.shape[-1],
+        )
+        if self._data.ints.dipole is not None and charges.dipole is None:
+            charges.dipole = torch.zeros(
+                (*atom_shape, defaults.DP_SHAPE), **self.dd
+            )
+
+        if self._data.ints.quadrupole is not None and charges.quad is None:
+            charges.quad = torch.zeros(
+                (*atom_shape, defaults.QP_SHAPE), **self.dd
+            )
+
+        self._data.charges = charges.layout
 
         if self.config.scp_mode == labels.SCP_MODE_CHARGE:
             return charges.as_tensor()
@@ -479,6 +504,7 @@ class BaseSCF:
             "energy": energy,
             "fenergy": fenergy,
             "hamiltonian": self._data.hamiltonian,
+            "nspin": self.nspin,
             "occupation": self._data.occupation,
             "potential": self.charges_to_potential(q),
             "iterations": self._data.iter,
@@ -587,7 +613,8 @@ class BaseSCF:
 
         occ = torch.clamp(self._data.occupation, min=eps)
         occ1 = torch.clamp(1 - self._data.occupation, min=eps)
-        g = torch.log(occ**occ * occ1**occ1).sum(-2) * self.kt
+        g_spin = torch.log(occ**occ * occ1**occ1) * self.kt
+        g = g_spin.sum(-2)
 
         mode = self.config.fermi.partition
 
@@ -605,12 +632,12 @@ class BaseSCF:
         # partition to atoms via Mulliken population analysis
         if mode == labels.FERMI_PARTITION_ATOMIC:
             # "electronic entropy" density matrix
-            density = einsum(
-                "...ik,...k,...jk->...ij",
-                self._data.evecs,  # sorted by energy, starting with lowest
-                g,
-                self._data.evecs,  # transposed
+            density = get_density(
+                self._data.evecs,
+                g_spin if self.nspin == 2 else g,
             )
+            if self.nspin == 2:
+                density = density.sum(-3)
 
             return mulliken.get_atomic_populations(
                 self._data.ints.overlap, density, self._data.ihelp

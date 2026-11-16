@@ -24,14 +24,22 @@ elements of the matrix product of the density and the overlap matrix.
 
 from __future__ import annotations
 
+import torch
+
 from dxtb import IndexHelper
 from dxtb._src.typing import Tensor
+
+from .spin import updown_to_charge_magnetization
 
 __all__ = ["get_bond_order"]
 
 
 def get_bond_order(
-    overlap: Tensor, density: Tensor, ihelp: IndexHelper
+    overlap: Tensor,
+    density: Tensor,
+    ihelp: IndexHelper,
+    *,
+    nspin: int = 1,
 ) -> Tensor:
     """
     Calculate Wiberg bond orders.
@@ -44,17 +52,32 @@ def get_bond_order(
         Density matrix.
     ihelp : IndexHelper
         Helper class for indexing.
+    nspin : int, optional
+        Number of spin channels. For two channels, the alpha/beta density
+        matrices are given in the third to last dimension. Defaults to ``1``.
 
     Returns
     -------
     Tensor
-        Wiberg bond orders.
+        Wiberg bond orders. For two spin channels, the bond orders are
+        returned in charge/magnetization representation (shape:
+        ``(..., 2, nat, nat)``).
     """
 
-    # matrix product PS is not symmetric, since P and S do not commute.
-    tmp = density @ overlap
+    def one_channel(channel_density: Tensor) -> Tensor:
+        # PS is not symmetric because P and S do not commute.
+        tmp = channel_density @ overlap
+        wbo = ihelp.reduce_orbital_to_atom(tmp * tmp.mT, dim=(-2, -1))
+        wbo.diagonal(dim1=-2, dim2=-1).fill_(0.0)
+        return wbo
 
-    wbo = ihelp.reduce_orbital_to_atom(tmp * tmp.mT, dim=(-2, -1))
-    wbo.diagonal(dim1=-2, dim2=-1).fill_(0.0)
+    if nspin == 1:
+        return one_channel(density)
 
-    return wbo
+    # The unrestricted Mayer convention carries a factor of two per spin
+    # block, preserving restricted/UHF parity for a closed shell.
+    updown = 2.0 * torch.stack(
+        tuple(one_channel(density.select(-3, channel)) for channel in range(2)),
+        dim=-3,
+    )
+    return updown_to_charge_magnetization(updown, dim=-3)

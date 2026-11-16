@@ -156,21 +156,15 @@ class Simple(Mixer):
         if self._x_old is None or self._delta is None:
             raise RuntimeError("Nothing has been mixed yet.")
 
-        if slicers == (...,):
-            tmp = self._x_old.shape[-1]
-        else:
-            # NOTE: Only works with vectors (not with Charge container!)
-            if isinstance(slicers[0], type(...)):
-                tmp = slicers[0]
-            elif isinstance(slicers[0], slice):
-                tmp = slicers[0].stop
-                if isinstance(tmp, Tensor):
-                    tmp = int(tmp)
-            else:
-                raise RuntimeError("Unknown slicer given.")
-
-        # Invert list for culling, gather & reassign `x_old` and `delta` so only
-        # those marked False remain.
         notconv = ~conv
-        self._x_old = self._x_old[notconv, :mpdim, :tmp]
-        self._delta = self._delta[notconv, :mpdim, :tmp]
+        index: tuple[Any, ...]
+        if slicers == (...,):
+            index = (notconv, ...)
+        elif len(slicers) == 1:
+            # Compatibility with the historical vector culling API.
+            index = (notconv, slice(0, mpdim), slicers[0])
+        else:
+            index = (notconv, *slicers)
+
+        self._x_old = self._x_old[index]
+        self._delta = self._delta[index]

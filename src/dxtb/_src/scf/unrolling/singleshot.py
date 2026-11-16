@@ -140,6 +140,7 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
             "energy": energy,
             "fenergy": fenergy,
             "hamiltonian": self._data.hamiltonian,
+            "nspin": self.nspin,
             "occupation": self._data.occupation,
             "potential": self.charges_to_potential(q),
             "iterations": self._data.iter,

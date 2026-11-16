@@ -28,6 +28,9 @@ from dxtb._src.components.classicals.base import ClassicalABC as ClassicalABC
 from dxtb._src.components.classicals.base import (
     ClassicalCache as ClassicalCache,
 )
+from dxtb._src.components.interactions.base import (
+    ChargeChannel as ChargeChannel,
+)
 from dxtb._src.components.interactions.base import Interaction as Interaction
 from dxtb._src.components.interactions.base import (
     InteractionCache as InteractionCache,
@@ -49,6 +52,7 @@ __all__ = [
     #
     "Interaction",
     "InteractionCache",
+    "ChargeChannel",
     "InteractionList",
     "InteractionListCache",
 ]

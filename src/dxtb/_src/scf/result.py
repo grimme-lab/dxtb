@@ -33,16 +33,16 @@ class SCFResult(TypedDict):
     """Collection of SCF result variables."""
 
     charges: Charges
-    """Self-consistent orbital-resolved Mulliken partial charges."""
+    """Mulliken charges; UHF channels are total and magnetization."""
 
     coefficients: Tensor
-    """LCAO-MO coefficients (eigenvectors of Fockian)."""
+    """MO coefficients; UHF shape is ``(..., 2, nao, nao)``."""
 
     density: Tensor
-    """Density matrix."""
+    """Density matrix; UHF shape is ``(..., 2, nao, nao)`` in alpha/beta."""
 
     emo: Tensor
-    """Energy of molecular orbitals (sorted by increasing energy)."""
+    """MO energies; UHF shape is ``(..., 2, nao)`` in alpha/beta."""
 
     energy: Tensor
     """Energies of the self-consistent contributions (interactions)."""
@@ -51,13 +51,16 @@ class SCFResult(TypedDict):
     """Atom-resolved electronic free energy from fractional occupation."""
 
     hamiltonian: Tensor
-    """Full Hamiltonian matrix (H0 + H1)."""
+    """Full Hamiltonian; UHF shape is ``(..., 2, nao, nao)``."""
 
     occupation: Tensor
-    """Orbital occupation."""
+    """Alpha/beta orbital occupations with shape ``(..., 2, nao)``."""
+
+    nspin: int
+    """Number of wavefunction channels represented by the result."""
 
     potential: Potential
-    """Self-consistent orbital-resolved potential."""
+    """SCF potentials; UHF channels are total and magnetization."""
 
     iterations: int
     """Number of SCF iterations."""

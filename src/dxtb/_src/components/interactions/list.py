@@ -35,13 +35,17 @@ from dxtb._src.typing import (
 
 from ..list import ComponentList, ComponentListCache
 from ..utils import _docstring_reset, _docstring_update
-from .base import Interaction
+from .base import ChargeChannel, Interaction
 from .container import Charges, Potential
 from .coulomb.secondorder import ES2, LABEL_ES2
 from .coulomb.thirdorder import ES3, LABEL_ES3
 from .dispersion.d4sc import LABEL_DISPERSIOND4SC, DispersionD4SC
 from .field.efield import LABEL_EFIELD, ElectricField
 from .field.efieldgrad import LABEL_EFIELD_GRAD, ElectricFieldGrad
+from .spin.spinpolarization import (
+    LABEL_SPIN_POLARIZATION,
+    SpinPolarization,
+)
 
 __all__ = ["InteractionList", "InteractionListCache"]
 
@@ -77,6 +81,23 @@ class InteractionList(ComponentList[Interaction]):
     List of interactions.
     """
 
+    @property
+    def requires_uhf(self) -> bool:
+        """Whether any contained interaction requires UHF channels."""
+        return any(interaction.requires_uhf for interaction in self.components)
+
+    @staticmethod
+    def _channel_index(interaction: Interaction) -> int:
+        """Index of the charge channel consumed by an interaction."""
+        return int(interaction.charge_channel is ChargeChannel.MAGNETIZATION)
+
+    @classmethod
+    def _select_charges(
+        cls, interaction: Interaction, charges: Charges
+    ) -> Charges:
+        """Select the charge channel consumed by an interaction."""
+        return charges.select_channel(cls._channel_index(interaction))
+
     @override
     def get_energy(
         self,
@@ -106,11 +127,16 @@ class InteractionList(ComponentList[Interaction]):
             charges = Charges(mono=charges)
 
         if len(self.components) <= 0:
-            return ihelp.reduce_orbital_to_atom(torch.zeros_like(charges.mono))
+            total = charges.select_channel(0)
+            return ihelp.reduce_orbital_to_atom(torch.zeros_like(total.mono))
 
         return torch.stack(
             [
-                interaction.get_energy(cache[interaction.label], charges, ihelp)
+                interaction.get_energy(
+                    cache[interaction.label],
+                    self._select_charges(interaction, charges),
+                    ihelp,
+                )
                 for interaction in self.components
             ]
         ).sum(dim=0)
@@ -137,11 +163,14 @@ class InteractionList(ComponentList[Interaction]):
             Energy vector for each orbital partial charge.
         """
         if len(self.components) <= 0:
-            return {"none": torch.zeros_like(charges.mono)}
+            total = charges.select_channel(0)
+            return {"none": torch.zeros_like(total.mono)}
 
         return {
             interaction.label: interaction.get_energy(
-                cache[interaction.label], charges, ihelp
+                cache[interaction.label],
+                self._select_charges(interaction, charges),
+                ihelp,
             )
             for interaction in self.components
         }
@@ -183,7 +212,7 @@ class InteractionList(ComponentList[Interaction]):
         return torch.stack(
             [
                 interaction.get_gradient(
-                    charges,
+                    self._select_charges(interaction, charges),
                     positions,
                     cache[interaction.label],
                     ihelp,
@@ -254,7 +283,8 @@ class InteractionList(ComponentList[Interaction]):
             torch.zeros_like(charges.mono),
             dipole=None,
             quad=None,
-            batch_mode=ihelp.batch_mode,
+            batch_mode=charges.batch_mode,
+            nspin=charges.nspin,
         )
 
         # exit with empty potential if no interactions present
@@ -263,9 +293,13 @@ class InteractionList(ComponentList[Interaction]):
 
         # add up potentials from all interactions
         for interaction in self.components:
+            channel = self._channel_index(interaction)
+            selected = self._select_charges(interaction, charges)
             p = interaction.get_potential(
-                cache[interaction.label], charges, ihelp
+                cache[interaction.label], selected, ihelp
             )
+            if charges.nspin == 2:
+                p = p.to_spin_channels(channel)
             pot += p
 
         return pot
@@ -292,6 +326,14 @@ class InteractionList(ComponentList[Interaction]):
 
     @overload
     def get_interaction(self, name: Literal["ES3"]) -> ES3: ...
+
+    @overload
+    def get_interaction(
+        self, name: Literal["SpinPolarization"]
+    ) -> SpinPolarization: ...
+
+    @overload
+    def get_interaction(self, name: str) -> Interaction: ...
 
     @override  # generic implementation for typing
     def get_interaction(self, name: str) -> Interaction:
@@ -324,6 +366,11 @@ class InteractionList(ComponentList[Interaction]):
         """Reset tensor attributes to a detached clone of the current state."""
         return self.reset(LABEL_ES3)
 
+    @_docstring_reset
+    def reset_spin_polarization(self) -> Interaction:
+        """Reset tensor attributes to a detached clone of the current state."""
+        return self.reset(LABEL_SPIN_POLARIZATION)
+
     ###########################################################################
 
     @_docstring_update
@@ -353,3 +400,7 @@ class InteractionList(ComponentList[Interaction]):
     @_docstring_update
     def update_es3(self, **kwargs: Any) -> Interaction:
         return self.update(LABEL_ES3, **kwargs)
+
+    @_docstring_update
+    def update_spin_polarization(self, **kwargs: Any) -> Interaction:
+        return self.update(LABEL_SPIN_POLARIZATION, **kwargs)

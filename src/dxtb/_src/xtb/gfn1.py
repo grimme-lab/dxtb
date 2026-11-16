@@ -191,6 +191,8 @@ class GFN1Hamiltonian(BaseHamiltonian):
         wmat: Tensor,
         pot: Potential,
         cn: Tensor,
+        pmat_magnet: Tensor | None = None,
+        pot_magnet: Potential | None = None,
     ) -> tuple[Tensor, Tensor]:
         """
         Calculate gradient of the full Hamiltonian with respect ot atomic
@@ -340,6 +342,12 @@ class GFN1Hamiltonian(BaseHamiltonian):
         tmp = 2 * (ph - wmat)
         if pot.mono is not None:
             tmp -= pmat * (pot.mono.unsqueeze(-1) + pot.mono.unsqueeze(-2))
+        if pmat_magnet is not None and pot_magnet is not None:
+            if pot_magnet.mono is not None:
+                tmp -= pmat_magnet * (
+                    pot_magnet.mono.unsqueeze(-1)
+                    + pot_magnet.mono.unsqueeze(-2)
+                )
 
         sval = torch.where(mask_orb_diagonal, tmp, zero)
 
